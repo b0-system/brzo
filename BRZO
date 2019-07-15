@@ -1,0 +1,6 @@
+(srcs-x B0.ml examples pkg attic test
+        src-ocaml/brzo_read_cmi_pre_408
+        src-ocaml/brzo_read_cmi_geq_408
+)
+
+(latex (outcome listing))

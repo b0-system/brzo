@@ -1,0 +1,236 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{prelude-bera}
+
+%% Fonts
+ \usepackage[T1]{fontenc}
+ \usepackage{textcomp}
+%% \usepackage{lmodern}
+\usepackage[scaled]{berasans}
+\usepackage[scaled]{beramono}
+\renewcommand{\rmdefault}{fvs}
+
+\RequirePackage{MnSymbol}
+\RequirePackage{pifont}
+%\RequirePackage[opticals,mathlf,footnotefigures,swash]{MinionPro}
+\RequirePackage{microtype} % doesn't work in non draft mode
+\RequirePackage{amsmath}
+\RequirePackage[thmmarks,amsmath,hyperref]{ntheorem}
+
+%% Bibliography
+\RequirePackage[square]{natbib}
+\bibliographystyle{plainnat}
+\setcitestyle{comma}
+
+%% Other packages
+\RequirePackage{graphicx}
+\RequirePackage{hyperref}
+\RequirePackage{memhfixc}
+
+%% Page layout
+\setlxvchars
+\settrimmedsize{297mm}{210mm}{*} %{148mm}{105mm}{*}
+\settrims{0pt}{0pt}
+\settypeblocksize{*}{1.1\lxvchars}{*}
+\setlrmargins{*}{*}{1.618}
+\setulmarginsandblock{72pt}{*}{1.618}
+\setheadfoot{\onelineskip}{3\onelineskip}
+\setheaderspaces{*}{\onelineskip}{*}
+\setmarginnotes{1em}{0.75\foremargin}{\onelineskip}
+\checkandfixthelayout
+
+%% Title
+\pretitle{\begin{flushright}\Huge}
+\posttitle{\par\end{flushright}\vskip 0.5em}
+\preauthor{\begin{flushright}\normalfont\large}
+\postauthor{\par\end{flushright}}
+\predate{\begin{flushright}\slshape}
+\postdate{\par\end{flushright}\par}
+
+%% Abstract
+\renewcommand{\abstractnamefont}{\normalfont\small\bfseries}
+\renewcommand{\abstracttextfont}{\normalfont\small}
+\abslabeldelim{\quad}
+\setlength{\absrightindent}{0pt}
+\setlength{\absleftindent}{0pt}
+\setlength{\abstitleskip}{-\parindent}
+\abstractrunin
+
+%% Sections
+\setsecnumdepth{section}
+\makechapterstyle{mychap}{%
+  \renewcommand{\printchaptername}{}
+  \renewcommand{\chapternamenum}{}
+  \renewcommand{\chaptitlefont}{\Large\bfseries\raggedright}
+  \renewcommand{\chapnumfont}{\chaptitlefont}
+  \renewcommand{\printchapternum}{\chapnumfont\thechapter\hspace{1ex}}
+  \renewcommand{\afterchapternum}{}
+}
+\chapterstyle{mychap}
+\setsecheadstyle{\large\slshape\raggedright\MakeUppercase}
+\setbeforesecskip{-\onelineskip}
+\setaftersecskip{\onelineskip}
+\setsubsecheadstyle{\sethangfrom{\noindent ##1}\raggedright\itshape}
+\setbeforesubsecskip{-\onelineskip}
+\setaftersubsecskip{\onelineskip}
+
+%% Headers and footers
+\newcommand{\myheaderstyle}{\slshape\small}
+\newcommand{\myfooterstyle}{\slshape}
+\makepagestyle{mypagestyle}
+%% \makeevenhead{mypagestyle}{}{\myheaderstyle\MakeLowercase\leftmark}{}
+%% \makeoddhead{mypagestyle}{}{\myheaderstyle\MakeLowercase\rightmark}{}
+%% \makepsmarks{mypagestyle}{%
+%%   \def\chaptermark##1{\markboth{\thechapter\quad ##1}{}}%
+%%   \def\sectionmark##1{\markright{##1}}}
+\makeevenfoot{mypagestyle}{\myfooterstyle\thepage}{}{}
+\makeoddfoot{mypagestyle}{}{}{\myfooterstyle\thepage}
+\pagestyle{mypagestyle}
+
+%% Table of contents
+% No title for toc
+%% \renewcommand{\tocheadstart}{}
+%% \renewcommand{\aftertoctitle}{}
+%% \renewcommand{\printtoctitle}[1]{}
+%% \setpnumwidth{0pt}
+%% \setrmarg{0pt}
+%% \renewcommand{\cftchapterfont}{\hfill\sscshape\small}
+%% \setlength{\cftbeforechapterskip}{2\smallskipamount}
+%% \renewcommand{\cftchapterpresnum}{\hfill\MakeLowercase}
+%% \settowidth{\cftchapternumwidth}{A\quad}
+%% \renewcommand{\cftchapteraftersnum}{\hspace*{10pt}}
+%% \renewcommand{\cftchapteraftersnumb}{\MakeLowercase}
+%% \newlength{\spacelength} % to align with chapter (why ?)
+%% \settowidth{\spacelength}{\sscshape\small\space }
+%% \renewcommand{\cftchapterleader}{\hspace{-\spacelength}}
+%% \renewcommand{\cftchapterpagefont}{\rmfamily\scriptsize\quad}
+%% \renewcommand{\cftsectionfont}{\hfill\rmfamily\scriptsize}
+%% %\setlength{\cftbeforesectionskip}{0.5\smallskipamount}
+%% \settowidth{\cftsectionnumwidth}{A\quad}
+%% \renewcommand{\cftsectionpresnum}{\hfill}
+%% \renewcommand{\cftsectionaftersnumb}{\itshape}
+%% \renewcommand{\cftsectionaftersnum}{\hspace*{10pt}}
+%% \renewcommand{\cftsectionleader}{} 
+%% \renewcommand{\cftsectionpagefont}{\rmfamily\scriptsize\quad}
+
+%% Captions and floats
+\captiondelim{ --- }
+\captionnamefont{\myheaderstyle}
+\captionstyle{\centering}
+\renewcommand{\figurename}{figure}
+\postcaption{\rule{0.96\linewidth}{0.4pt}}
+
+%% Left or right ?
+\newcommand{\pageside}{\checkoddpage\ifoddpage right\else left\fi}
+
+%% Margin figures
+\newcommand{\marginfig}[1]{
+  \marginpar{\checkoddpage%
+\ifoddpage\raggedleft\else\raggedright\fi #1}}
+
+
+%% Numbered environments and equations
+
+% Margin numbers.
+\newcommand{\myprintmarginnum}[1]{{\tiny #1}}
+\newlength{\mymarginnumberspace}
+\setlength{\mymarginnumberspace}{1em}
+\newcommand{\myplacemarginnum}[1]{\checkoddpage%
+\ifoddpage%
+   \rlap{\hskip\columnwidth\hspace{\mymarginnumberspace}\myprintmarginnum{#1}}%
+\else%
+   \llap{\myprintmarginnum{#1}\hspace{\mymarginnumberspace}}%
+\fi}
+
+% Equations numbers.
+\def\tagform@#1{\myplacemarginnum{#1}}
+\renewcommand{\theequation}{\arabic{chapter}.\arabic{equation}}
+
+% Environment numbers.
+\numberwithin{equation}{chapter}
+\newtheoremstyle{mymargin}%
+{\item[\hskip\labelsep\myplacemarginnum{##2}\theorem@headerfont ##1 %
+    \theorem@separator]}%
+{\item[\hskip\labelsep\myplacemarginnum{##2}\theorem@headerfont ##1 %
+ \ (##3)\theorem@separator]}
+
+% Environments
+\theoremstyle{mymargin}
+\theoremheaderfont{\normalfont\bfseries}
+\theorembodyfont{\rmfamily}
+\theoremsymbol{\Pisymbol{MinionPro-Extra}{116}}
+\theoremseparator{.}
+
+\newtheorem{theorem}[equation]{Theorem}
+\newtheorem{corollary}[equation]{Corollary}
+\newtheorem{lemma}[equation]{Lemma}
+\newtheorem{hypothesis}[equation]{Hypothesis}
+\newtheorem{proposition}[equation]{Proposition}
+\newtheorem{definition}[equation]{Definition}
+\newtheorem{assumption}[equation]{Assumption}
+
+%\theoremsymbol{\raisebox{-1pt}{\mbox{\large$\filledsquare$}}}
+\theoremsymbol{\Pisymbol{MinionPro-Extra}{146}}
+\newtheorem{nproof}[equation]{Proof}
+\theoremstyle{nonumberplain}
+\newtheorem{proof}{Proof}
+
+%% Lists
+\tightlists
+\renewenvironment{enumerate}[1][\arabic]
+                 {\begin{list}{#1{enumi}.}
+                     {\usecounter{enumi}
+                       \setlength{\topsep}{\medskipamount}
+                       \setlength{\partopsep}{0pt}
+                       \setlength{\labelwidth}{2ex}
+                       \setlength{\labelsep}{1ex}
+                       \setlength{\parsep}{0pt}
+                       \setlength{\itemindent}{0em}
+                       \setlength{\listparindent}{\parindent}
+                       \setlength{\itemsep}{\medskipamount}
+                       \setlength{\leftmargin}{3ex}
+                       \setlength{\rightmargin}{0em}}}
+                 {\end{list}}
+
+
+%% Math general
+\newlength{\proofcaseindent}
+\setlength{\proofcaseindent}{1em}
+\newenvironment{proofcase}[2][0]
+{\medskip\par\begin{adjustwidth}{#1\proofcaseindent}{0pt}
+    \textit{#2}.\quad\ignorespaces}
+{\ignorespacesafterend\end{adjustwidth}}
+
+% To define named operator, relations and functions
+\newcommand{\namedop}[1]{\ensuremath{\mathsf{#1}}}
+\newcommand{\namedrel}[1]{\ensuremath{\mathrel{\mathsf{#1}}}}
+\newcommand{\namedfun}[1]{\ensuremath{\mathit{#1}}}
+
+% Some useful operators
+\newcommand{\dom}{\namedop{dom}}
+\newcommand{\range}{\namedop{range}}
+\renewcommand{\inf}{\namedop{inf}}
+\renewcommand{\sup}{\namedop{sup}}
+\renewcommand{\min}{\namedop{min}}
+\renewcommand{\max}{\namedop{max}}
+\newcommand{\id}{\namedop{id}}
+\newcommand{\reach}{\namedop{reach}}
+
+% Definitions
+\newcommand{\textiff}{\text{ iff }}
+\newcommand{\deff}{\triangleq}
+
+% Sets
+\newcommand{\set}[1]{\left\{ #1 \right\}}
+\newcommand{\scompl}[1]{\overline{#1}}
+\newcommand{\card}[1]{\lvert #1 \rvert}
+
+% Equivalence class
+\newcommand{\eqclass}[1]{\left\lbrack #1 \right\rbrack}
+
+% Function restriction
+\newcommand{\restr}{\vert}
+
+% Usual sets
+\newcommand{\Nat}{\ensuremath{\omega}}
+\newcommand{\Snat}[2]{\ensuremath{[#1,#2]}}
+\newcommand{\Bool}{\ensuremath{\mathcal{B}}}

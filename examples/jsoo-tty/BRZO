@@ -1,0 +1,6 @@
+; Checks js_of_ocaml's tty glue
+; try for example brzo -- tty.ml
+; and look the browser console
+
+; (domain ocaml)
+; (ocaml (target html))

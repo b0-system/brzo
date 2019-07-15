@@ -1,0 +1,22 @@
+opam-version: "2.0"
+maintainer: "Daniel Bünzli <daniel.buenzl i@erratique.ch>"
+authors: ["The brzo programmers"]
+homepage: "https://erratique.ch/software/brzo"
+doc: "https://erratique.ch/software/brzo/doc"
+license: "ISC"
+dev-repo: "git+https://erratique.ch/repos/brzo.git"
+bug-reports: "https://github.com/b0-system/brzo/issues"
+tags: [ "org:erratique" "org:b0-system" "build" "dev" ]
+depends:
+[
+  "ocaml" {>= "4.03.0"}
+  "ocamlfind" {build}
+  "ocamlbuild" {build}
+  "topkg" {build & >= "0.9.0"}
+  "b0"
+  "cmdliner" {>= "1.0.2"}
+]
+build:
+[[
+  "ocaml" "pkg/pkg.ml" "build" "--dev-pkg" "%{dev}%"
+]]

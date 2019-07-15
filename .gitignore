@@ -1,4 +1,6 @@
+.merlin
 _build
+_b0
 tmp
 *~
 \.\#*
@@ -6,3 +8,5 @@ tmp
 *.install
 *.native
 *.byte
+examples/*/.merlin
+src-ocaml/brzo_read_cmi.ml

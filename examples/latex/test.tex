@@ -1,0 +1,164 @@
+\documentclass[twoside,article,a4paper,12pt,leqno]{memoir}
+\usepackage{prelude-bera}
+
+\newcommand{\mytitle}{Emergence of a Document}
+\newcommand{\myauthor}{Daniel C. B\"unzli}
+\hypersetup{%
+  pdftitle={\mytitle},
+  pdfauthor={\myauthor},
+  pdfkeywords={},
+  colorlinks=false}
+
+\title{\mytitle}
+\author{\myauthor}
+\date{\small Draft of \today}
+
+\begin{document}
+
+%% For prelude-minion.
+% Ref in small caps doesn't work if not done here.
+%% \let\oldref\ref
+%% \renewcommand{\ref}[1]{\textsc{\oldref{#1}}}
+
+\begin{titlingpage}
+\maketitle
+\begin{abstract}
+Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do
+eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
+minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+aliquip ex ea commodo consequat. Duis aute irure dolor in
+reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
+pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+culpa qui officia deserunt mollit anim id est laborum.
+\end{abstract}
+\end{titlingpage}
+
+\chapter{Introduction}\label{sec:intro}
+
+Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Nullam ac
+risus. Donec auctor consectetuer tortor. Donec nunc lorem, placerat
+sit amet, luctus sed, molestie sed, elit. Aenean nec est. Cras et
+nulla id libero mattis suscipit. Sed nunc pede, sagittis sit amet,
+volutpat id, condimentum non, nisl. Cras lacus lectus, viverra sit
+amet, egestas sed, molestie sed, felis. Donec mollis. Sed et ligula et
+metus feugiat lobortis. In auctor turpis nec odio. Phasellus
+lobortis. Nulla eget felis eget eros mattis commodo. Proin laoreet
+ullamcorper~\ref{sec:intro} nulla. Fusce non nunc hendrerit lectus
+porttitor placerat. Nunc interdum massa nec quam. Etiam varius
+vestibulum lectus. Mauris pulvinar gravida nulla. Cras iaculis pede
+sit amet risus.
+
+Duis volutpat velit nec felis. Mauris tristique sapien et est. Ut quis
+dui id ante rutrum mattis. Vivamus nisi. Morbi non eros eu est lacinia
+posuere. Aliquam tortor nisi, auctor et, iaculis eget, aliquet eget,
+augue. Nulla non urna. In tortor. Pellentesque laoreet magna nec
+massa. Quisque velit nibh, semper non, pulvinar nec, ultricies non,
+mauris.
+
+\begin{definition}[Defined]\label{def:bli}
+Lorem ipsum \emph{dolor sit amet} $p$, consectetuer adipiscing
+elit :
+\begin{displaymath}
+  p^2(x)\deff \set{x\mid \text{ there is } y = y \cdot y }
+\end{displaymath}
+Donec vulputate sapien non
+pede. Maecenas
+gravida, nulla cursus hendrerit porttitor, risus massa aliquam nisl,
+at ornare velit dui eu lacus.
+\end{definition}
+
+Duis lobortis augue eget elit. Aliquam at enim. Mauris blandit
+condimentum velit. Maecenas aliquam nisi ut leo. Sed libero magna,
+cursus a, condimentum et, ornare non, dui. Sed convallis aliquet
+lacus. Vivamus eros dolor, convallis in, blandit in, varius vitae,
+ligula. Praesent urna augue, congue id, elementum et, semper vitae,
+urna. Sed vel nisi a elit auctor ornare. Vestibulum dignissim ligula
+eget eros. Curabitur~\ref{def:bli} pulvinar, dolor id vulputate
+accumsan, libero nulla tempus lacus, ac condimentum nulla felis sit
+amet justo. Vivamus sed diam. Nulla pulvinar commodo lectus. Aliquam
+metus tellus, suscipit sed, mollis a, posuere a, nisl. Aliquam massa
+diam, commodo vitae, porta non, sagittis quis, libero.
+
+Mauris sodales tellus at nulla congue sodales. Integer
+dapibus. Suspendisse vehicula. Curabitur nonummy volutpat turpis. Sed
+fermentum augue et lorem. Curabitur in urna eget ante eleifend
+tincidunt. Nunc viverra felis tincidunt ipsum. Aliquam eu lorem a
+turpis venenatis porttitor. Vivamus sit amet neque. Integer
+pellentesque velit vitae diam. Curabitur euismod quam ac sem. In
+tempor accumsan sem.
+
+Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Maecenas non
+libero. Pellentesque urna nisi, ullamcorper ut, ultricies vitae,
+vulputate id, dolor. Cras leo. Sed ac nisl. Pellentesque scelerisque
+nibh non tortor. Praesent nulla ligula, vehicula eu, malesuada non,
+adipiscing vel, augue. Nulla pharetra placerat dolor. Morbi convallis
+nulla suscipit lacus ultrices adipiscing. Suspendisse nisl erat,
+eleifend at, euismod tempor, gravida eu, turpis. Morbi eu neque non
+enim posuere mollis. Integer mattis luctus purus.
+
+Fusce quam felis, nonummy et, tristique in, condimentum non,
+elit. Cras a mauris nec pede condimentum blandit. Morbi gravida neque
+in sem. In tempus tellus eu lectus. In hac habitasse platea
+dictumst. Fusce eget tellus. Duis placerat viverra eros. Duis
+porttitor, nibh nec volutpat rhoncus, felis lacus rhoncus justo, ut
+eleifend mauris orci vitae arcu. Nunc convallis risus at nunc. In hac
+habitasse platea dictumst. Proin posuere lectus quis
+elit. Pellentesque ultrices velit in pede. Aliquam vulputate bibendum
+ipsum. Donec sagittis porttitor purus. Curabitur quis dolor. Nullam
+turpis nisi, dignissim eu, molestie id, sodales id, odio. Nam pulvinar
+augue vel mauris. Donec eu nisl at metus iaculis interdum. Sed auctor
+vulputate nunc.
+
+\begin{theorem}[dio] For all $x$ : $p^2(x) = 66 / 2$.
+\end{theorem}
+\begin{proof}
+Quisque at tellus. Suspendisse lacus est, rutrum vitae, interdum ac,
+dignissim quis, augue. Nullam a tortor. Aenean semper lectus. Morbi
+facilisis ultrices elit. Fusce sollicitudin diam egestas risus. Lorem
+ipsum dolor sit amet, consectetuer adipiscing elit. Cum sociis natoque
+penatibus et magnis dis parturient montes, nascetur ridiculus
+mus. Vivamus rhoncus, lacus quis auctor convallis, magna velit blandit
+dolor, id dictum neque risus at odio. Quisque augue sem, interdum
+eget, semper at, dapibus a, tellus. Etiam a lorem. Ut sodales. Aenean
+ultrices accumsan arcu.
+\end{proof}
+
+Donec imperdiet dignissim nisl. Nullam ornare metus. Curabitur
+orci. Nam et risus sit amet nunc pellentesque tristique. Aenean
+adipiscing iaculis mi. Vivamus lorem nulla, ultrices dapibus, gravida
+eget, sollicitudin sit amet, enim. Fusce vehicula malesuada
+leo. Aliquam malesuada, libero at porttitor imperdiet, nunc risus
+pulvinar justo, quis elementum sem sem sit amet metus. Aenean et
+justo. Nam ullamcorper dignissim ipsum. Aliquam quis quam et orci
+porttitor ullamcorper. Mauris egestas tincidunt sem. Donec ultricies,
+ipsum sed faucibus suscipit, velit sem rhoncus quam, id rutrum erat
+urna id augue. Nullam a lorem eu metus tempor auctor. Vivamus velit
+erat, condimentum in, pellentesque a, imperdiet a, nibh. Cras auctor
+sagittis quam. Proin volutpat, mauris eget pellentesque pretium, sem
+mauris volutpat erat, vel vestibulum est nisi in leo. In
+suscipit. Nulla et nibh. Nunc sapien urna, interdum et, adipiscing
+malesuada, cursus vel, tellus.
+
+Donec euismod. Aliquam id eros porta augue interdum fringilla. Morbi
+feugiat, mauris id varius tristique, magna leo egestas ipsum, vel
+molestie est lorem ac elit. Nullam velit lorem, varius eu, commodo sit
+amet, tincidunt non, orci. Nullam ut dui. Pellentesque egestas quam ac
+est. Sed malesuada elementum arcu. Vestibulum lectus ipsum, interdum
+eget, faucibus sed, mollis ac, tellus. Integer in est. Aliquam erat
+volutpat. Duis odio ipsum, vulputate ac, pulvinar in, cursus nec,
+pede. In ipsum. Praesent id orci. Morbi massa nisi, dignissim ac,
+egestas eget, aliquam vel, magna. Class aptent taciti sociosqu ad
+litora torquent per conubia nostra, per inceptos hymenaeos. Morbi
+egestas iaculis purus. In mi. In id nibh.
+
+Donec sit amet urna pretium~\cite{thearticle} magna sagittis
+posuere. Morbi condimentum orci quis ipsum. Proin aliquam convallis
+nisl. Etiam elementum. Nulla feugiat nisl id odio. Aenean fringilla
+sagittis erat. Aenean ac elit vitae enim tincidunt rutrum. Nullam
+vehicula interdum odio. Pellentesque habitant morbi tristique senectus
+et~\cite{articlebis} netus et malesuada fames ac turpis egestas. Nulla
+facilisi. Integer in enim sed nulla faucibus aliquet. Vestibulum porta
+ligula nec nulla.
+
+\bibliography{test}
+\end{document}

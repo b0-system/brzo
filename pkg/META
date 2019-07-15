@@ -1,0 +1,7 @@
+description = "Quick-setting builds"
+version = "%%VERSION_NUM%%"
+requires = "cmdliner b0.std b0.b00 b0.care"
+archive(byte) = "brzo.cma"
+archive(native) = "brzo.cmxa"
+plugin(byte) = "brzo.cma"
+plugin(native) = "brzo.cmxs"

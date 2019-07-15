@@ -1,0 +1,26 @@
+
+PROJECT_NAME           = "c-inc-deps"
+PROJECT_NUMBER         = "HuHU"
+OUTPUT_DIRECTORY       = "/dev/null"
+OPTIMIZE_OUTPUT_FOR_C  = YES
+EXTRACT_ALL            = YES
+QUIET                  = YES
+
+SOURCE_BROWSER         = YES
+
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+HTML_FILE_EXTENSION    = .html
+HTML_EXTRA_STYLESHEET  =
+HTML_EXTRA_FILES       =
+GENERATE_TREEVIEW      = YES
+SEARCHENGINE           = YES
+
+GENERATE_LATEX         = YES
+HAVE_DOT               = NO
+INCLUDED_BY_GRAPH      = YES
+CALL_GRAPH             = YES
+CALLER_GRAPH           = YES
+DIRECTORY_GRAPH        = YES
+DOT_IMAGE_FORMAT       = svg
+INTERACTIVE_SVG        = YES

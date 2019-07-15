@@ -1,0 +1,19 @@
+# To run the brzo built from the repo as if was in your PATH issue:
+# source dev-env
+
+ROOT=`pwd`
+BRZO_BRZO=$ROOT/_b0/brzo/ocaml-exec-native/a.out
+BRZO_OCB=$ROOT/_build/src/brzo_main.native
+
+brzo ()
+{
+  if [ -e $BRZO_BRZO ]; then
+     $BRZO_BRZO "$@"
+  elif [ -e $BRZO_OCB ]; then
+     $BRZO_OCB "$@"
+  else
+    echo "[WARNING] No dev build of brzo found using PATH."
+    unset brzo
+    brzo "$@"
+  fi
+}

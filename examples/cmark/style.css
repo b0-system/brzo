@@ -1,0 +1,5 @@
+:root { --color-link: #7788AA; }
+body { margin: 3em; background: #222; color: #999; font-family: sans-serif; }
+h1 { text-transform: uppercase }
+a { color: var(--color-link); text-decoration:none; }
+a:hover { box-shadow:0 1px 0 0 var(--color-link); }
