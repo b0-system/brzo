@@ -45,7 +45,7 @@ module Inc_deps = struct
     in
     loop max s start
 
-  let of_string ?(file = Os.File.null) ~root s =
+  let of_string ?(file = Fpath.null) ~root s =
     let rec loop root acc max s i =
       let i = skip_white max s i in
       if i > max then List.rev acc else

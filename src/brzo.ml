@@ -599,7 +599,7 @@ module Cli = struct
                a BRZO file present at the brzo root. Note that this option \
                does not affect root finding (see $(b,--root)), it only \
                replaces the BRZO file to use."
-        Fpath.pp_quoted Os.File.null
+        Fpath.pp_quoted Fpath.null
     in
     let docv = "FILE" in
     let env = Arg.env_var "BRZO_FILE" in

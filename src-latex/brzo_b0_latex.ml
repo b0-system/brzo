@@ -145,7 +145,7 @@ module Bibdoi = struct
   let qdoi = Sexpq.atom_to ~kind:"DOI" parse_doi
   let qdois = Sexpq.list qdoi
 
-  let of_string ?(file = Os.File.dash) s =
+  let of_string ?(file = Fpath.dash) s =
     let open B00_serialk_sexp in
     let file = Fpath.to_string file in
     Result.bind (Sexp.seq_of_string' ~file s) @@ fun sexp ->
