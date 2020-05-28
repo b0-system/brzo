@@ -110,7 +110,7 @@ module Mod_resolver = struct
         r.mod_ref_cmi <-
           B00_ocaml.Mod_ref.Map.add_to_list
             (Brzo_ocaml_cmi.mod_ref info) info r.mod_ref_cmi;
-        set_info (Some info)
+        set_info info
       end;
       info
 
@@ -186,7 +186,7 @@ module Mod_resolver = struct
             (B00_ocaml.Cobj.defs cobj)
         in
         List.iter add_mod_refs cobjs;
-        set_info (Some cobjs)
+        set_info cobjs
       end;
       info
 

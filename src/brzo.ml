@@ -30,7 +30,7 @@ module Memo = struct
     let hook () = write_build_log m in
     Os.Sig_exit.on_sigint ~hook @@ fun () ->
     let exit, set = B00.Memo.Fut.create m in
-    B00.Memo.spawn_fiber m (fun () -> fiber (fun v -> set (Some v)));
+    B00.Memo.spawn_fiber m (fun () -> fiber (fun v -> set v));
     B00.Memo.stir m ~block:true;
     let ret = match B00.Memo.status m with
     | Ok () ->
