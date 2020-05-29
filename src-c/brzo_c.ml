@@ -4,6 +4,7 @@
   ---------------------------------------------------------------------------*)
 
 open B00_std
+open B00_std.Fut.Syntax
 open B00
 open Brzo_b0_c
 
@@ -89,9 +90,9 @@ type builder =
     srcs : B00_fexts.map;
     build_dir : Fpath.t; }
 
-let builder m c dc ~build_dir ~srcs k =
+let builder m c dc ~build_dir ~srcs =
   let src_root = Brzo.Conf.root c in
-  k { m; c; dc; src_root; srcs; build_dir }
+  Fut.return { m; c; dc; src_root; srcs; build_dir }
 
 let default_flags = Cmd.(arg "-g" % "-Wall")
 
@@ -101,16 +102,18 @@ let compile_src b ~in_dir ~obj_ext ~deps cname c =
   begin
     Memo.file_ready b.m c;
     Inc_deps.write b.m ~src:c ~o:d;
-    Inc_deps.read b.m ~src:c d @@ fun deps ->
+    ignore @@
+    let* deps = Inc_deps.read b.m ~src:c d in
     List.iter (Memo.file_ready b.m) deps;
     Compile.c_to_o ~args:default_flags b.m ~deps ~c ~o;
+    Fut.return ()
   end;
   o
 
-let compile_srcs b ~in_dir k =
-  Brzo_b0_c.Conf.obj_ext b.m @@ fun obj_ext ->
+let compile_srcs b ~in_dir =
+  let* obj_ext = Brzo_b0_c.Conf.obj_ext b.m in
   let rec loop os cunits hs = function
-  | [] -> List.rev os
+  | [] -> Fut.return os
   | c :: cs ->
       let cname = Fpath.basename ~no_ext:true c in
       match String.Map.find cname cunits with
@@ -128,20 +131,23 @@ let compile_srcs b ~in_dir k =
   let hs = B00_fexts.(find_files (ext ".h") b.srcs) in
   let cs = B00_fexts.(find_files (ext ".c") b.srcs) in
   List.iter (Memo.file_ready b.m) hs;
-  k (loop [] String.Map.empty hs cs)
+  loop [] String.Map.empty hs cs
 
 let build_exe b ~exe =
-  compile_srcs b ~in_dir:b.build_dir @@ fun objs ->
-  Link.exe b.m ~args:default_flags ~objs ~o:exe
+  let* objs = compile_srcs b ~in_dir:b.build_dir in
+  Link.exe b.m ~args:default_flags ~objs ~o:exe;
+  Fut.return ()
 
-let exec_build m c dc ~build_dir ~artefact ~srcs k =
-  Brzo.Memo.ensure_exec_build m ~srcs ~need_ext:".c" @@ fun () ->
-  builder m c dc ~build_dir ~srcs @@ fun b ->
-  k (build_exe b ~exe:artefact)
+let exec_build m c dc ~build_dir ~artefact ~srcs =
+  let* () = Brzo.Memo.ensure_exec_build m ~srcs ~need_ext:".c" in
+  let* b = builder m c dc ~build_dir ~srcs in
+  build_exe b ~exe:artefact
 
 let exec =
   let name = "exec" and doc = "Build and execute a program (default)." in
-  let artefact _ _ _ ~build_dir k = k Fpath.(build_dir / "a.out") in
+  let artefact m _ _ ~build_dir =
+    Fut.return Fpath.(build_dir / "a.out")
+  in
   let build = exec_build and action = Brzo_outcome.Action.exec in
   Brzo_outcome.v ~name ~doc ~artefact ~build ~action_has_args:true ~action ()
 
@@ -221,9 +227,11 @@ let write_doxyfile m c dc ~out_dir ~srcs ~o =
   match find_doxyfile m c dc with
   | Some doxyfile ->
       Memo.file_ready m doxyfile;
-      Memo.read m doxyfile @@ fun doxy ->
+      ignore @@
+      let* doxy =  Memo.read m doxyfile in
       let doxy = override_doxyfile ~out_dir ~srcs doxy in
-      Memo.write m ~reads:[doxyfile] ~stamp:doxy o @@ fun () -> Ok doxy
+      (Memo.write m ~reads:[doxyfile] ~stamp:doxy o @@ fun () -> Ok doxy);
+      Fut.return ()
   | None ->
       let root = Brzo.Conf.root c in
       let project_name = Fpath.basename root in
@@ -245,7 +253,7 @@ let write_doxyfile m c dc ~out_dir ~srcs ~o =
       in
       Memo.write m ~reads:srcs ~stamp:doxy o @@ (fun () -> Ok doxy)
 
-let doc_build m c dc ~build_dir ~artefact ~srcs k =
+let doc_build m c dc ~build_dir ~artefact ~srcs =
   let out_dir = Fpath.(build_dir / "o") in
   let srcs_exts = B00_fexts.(ext ".md" + ext ".h" + ext ".c") in
   let srcs = B00_fexts.find_files srcs_exts srcs in
@@ -255,20 +263,24 @@ let doc_build m c dc ~build_dir ~artefact ~srcs k =
   let doxygen = Memo.tool m Brzo_b0_doxygen.Tool.doxygen in
   Memo.spawn' m ~reads:(doxyfile :: srcs) ~writes_root:out_dir @@
   doxygen Cmd.(path doxyfile);
-  k ()
+  Fut.return ()
 
 let doc =
   let name = "doc" and doc = "Build and show source documentation (doxygen)." in
-  let artefact _ _ _ ~build_dir k = k Fpath.(build_dir / "o" / "html") in
+  let artefact m _ _ ~build_dir =
+    Fut.return Fpath.(build_dir / "o" / "html")
+  in
   let build = doc_build and action = Brzo_outcome.Action.show_uri in
   Brzo_outcome.v ~name ~doc ~artefact ~build ~action_has_args:false ~action ()
 
 let html =
   let name = "html" in
   let doc = "Build and execute a HTML program (emscripten)." in
-  let artefact _ _ _ ~build_dir k = k Fpath.(build_dir / "index.html") in
-  let build m c _ ~build_dir ~artefact ~srcs k = failwith "TODO" in
-  let action _ c _ ~build_dir ~artefact k = failwith "TODO" in
+  let artefact m _ _ ~build_dir =
+    Fut.return Fpath.(build_dir / "index.html")
+  in
+  let build m c _ ~build_dir ~artefact ~srcs = failwith "TODO" in
+  let action _ c _ ~build_dir ~artefact = failwith "TODO" in
   Brzo_outcome.v ~name ~doc ~artefact ~build ~action_has_args:true ~action ()
 
 (* Outcomes *)

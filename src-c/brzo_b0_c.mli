@@ -14,7 +14,7 @@ module Tool : sig
 end
 
 module Conf : sig
-  val obj_ext : Memo.t -> Fpath.ext Memo.fiber
+  val obj_ext : Memo.t -> Fpath.ext Fut.t
 end
 
 (** C include dependencies (via [gcc] [-M])
@@ -31,7 +31,7 @@ module Inc_deps : sig
       needs to make sure all generated includes that may end up being
       used {!src} are generated before asking for dependencies. *)
 
-  val read : Memo.t -> src:Fpath.t -> Fpath.t -> Fpath.t list Memo.fiber
+  val read : Memo.t -> src:Fpath.t -> Fpath.t -> Fpath.t list Fut.t
   (** [read m file] reads dependencies produced by {!write} in [file]
       for source [src] (whose parent directory is used to make paths
       absolute, see {!of_string}). *)

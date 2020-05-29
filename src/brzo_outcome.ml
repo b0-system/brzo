@@ -8,18 +8,18 @@ open B00_std
 (* Outcome steps *)
 
 type 'a build_dir_suff =
-  B00.Memo.t -> Brzo.Conf.t -> 'a -> string B00.Memo.fiber
+  B00.Memo.t -> Brzo.Conf.t -> 'a -> string Fut.t
 
 type 'a artefact =
-  B00.Memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t -> Fpath.t B00.Memo.fiber
+  B00.Memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t -> Fpath.t Fut.t
 
 type 'a build =
   B00.Memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t -> artefact:Fpath.t ->
-  srcs:B00_fexts.map -> unit B00.Memo.fiber
+  srcs:B00_fexts.map -> unit Fut.t
 
 type 'a action =
   B00.Memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t -> artefact:Fpath.t ->
-  (unit -> (Brzo.Exit.t, string) result) B00.Memo.fiber
+  (unit -> (Brzo.Exit.t, string) result) Fut.t
 
 (* Outcomes *)
 
@@ -32,8 +32,8 @@ type 'a t =
     action : 'a action }
 
 let v
-    ~name ~doc ?(build_dir_suff = fun _ _ _ k -> k "") ~artefact ~build
-    ~action_has_args ~action ()
+    ~name ~doc ?(build_dir_suff = fun m _ _ -> Fut.return "")
+    ~artefact ~build ~action_has_args ~action ()
   =
   let pre_outcome = Brzo.Pre_domain.outcome ~name ~doc in
   { pre_outcome; build_dir_suff; artefact; build; action_has_args; action }
@@ -55,21 +55,21 @@ let get o os = try List.find (fun o' -> String.equal o (name o')) os with
 (* Predefined actions *)
 
 module Action = struct
-  let exec _ c _ ~build_dir:_ ~artefact k =
-    k @@ fun () ->
+  let exec m c _ ~build_dir:_ ~artefact =
+    Fut.return @@ fun () ->
     let action_args = Brzo.Conf.action_args c in
     let cmd = Cmd.(path artefact %% args action_args) in
     Ok (Brzo.Exit.Exec (artefact, cmd))
 
-  let show_pdf _ c _ ~build_dir:_ ~artefact k =
-    k @@ fun () ->
+  let show_pdf m c _ ~build_dir:_ ~artefact =
+    Fut.return @@ fun () ->
     let pdf_viewer = Brzo.Conf.pdf_viewer c in
     Result.bind (B00_pdf_viewer.find ~pdf_viewer ()) @@ fun pdf_viewer ->
     Result.bind (B00_pdf_viewer.show pdf_viewer artefact) @@
     fun () -> Ok Brzo.Exit.ok
 
-  let show_uri _ c _ ~build_dir:_ ~artefact k =
-    k @@ fun () ->
+  let show_uri m c _ ~build_dir:_ ~artefact =
+    Fut.return @@ fun () ->
     let uri = Fmt.str "file://%s" (Fpath.to_string artefact) in
     let browser = Brzo.Conf.www_browser c in
     let background = Brzo.Conf.background c in

@@ -11,12 +11,13 @@ open B00
 val tool : Tool.t
 (** [tool] is the [opam] tool. *)
 
-val exists : Memo.t -> bool Memo.fiber
-val if_exists : Memo.t -> (unit -> 'a Memo.fiber) -> 'a option Memo.fiber
-val lib_dir : Memo.t -> ?switch:string -> unit -> Fpath.t Memo.fiber
+val exists : Memo.t -> bool Fut.t
+val if_exists : Memo.t -> (unit -> 'a Fut.t) -> 'a option Fut.t
+val lib_dir : Memo.t -> ?switch:string -> unit -> Fpath.t Fut.t
 
-val list : Memo.t -> ?switch:string ->
-  [ `Available | `Installed ] -> unit -> string list Memo.fiber
+val list :
+  Memo.t -> ?switch:string -> [ `Available | `Installed ] -> unit ->
+  string list Fut.t
 
 type pkg = string * string option
 

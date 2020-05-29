@@ -4,6 +4,7 @@
   ---------------------------------------------------------------------------*)
 
 open B00_std
+open B00_std.Fut.Syntax
 open B00
 
 let tool = Tool.by_name ~vars:["PATH"] "opam"
@@ -12,30 +13,36 @@ let opam_bin = Cmd.arg "opam"
 (* FIXME memo is used here but only for future proofing but we should
    really use it. Also we need an easy no caching option spawns in Memo. *)
 
-let exists m k = match Os.Cmd.find opam_bin |> Memo.fail_if_error m with
-| None -> k false | Some _ -> k true
+let exists m = match Os.Cmd.find opam_bin |> Memo.fail_if_error m with
+| None -> Fut.return false | Some _ -> Fut.return true
 
-let if_exists m f k =
-  exists m @@ function false -> k None | true -> f () (fun v -> k (Some v))
+let if_exists m f =
+  let* exists = exists m in
+  if not exists then Fut.return None else
+  Fut.map Option.some (f ())
 
-let run m ?switch:s cmd oargs k =
+let run m ?switch:s cmd oargs =
   let opam = Os.Cmd.must_find opam_bin |> Memo.fail_if_error m in
   let s = match s with None -> Cmd.empty | Some s -> Cmd.(arg "--switch" % s) in
-  k (Os.Cmd.run_out ~trim:true Cmd.(opam % cmd %% s %% oargs))
+  Fut.return
+    (Os.Cmd.run_out ~trim:true Cmd.(opam % cmd %% s %% oargs))
 
-let lib_dir m ?switch () k =
-  run m ?switch "var" Cmd.(arg "lib") @@ fun r ->
-  k @@ Memo.fail_if_error m @@ Result.bind r @@ fun s -> Fpath.of_string s
+let lib_dir m ?switch () =
+  let* r = run m ?switch "var" Cmd.(arg "lib") in
+  let lib_dir = Result.bind r Fpath.of_string in
+  let lib_dir = Memo.fail_if_error m lib_dir in
+  Fut.return lib_dir
 
-let list m ?switch which () k =
+let list m ?switch which () =
   let which = match which with
   | `Available -> Cmd.arg "--available"
   | `Installed -> Cmd.arg "--installed"
   in
-  run m ?switch "list" Cmd.(which % "--short") @@ fun r ->
-  k @@ Memo.fail_if_error m @@
-  Result.bind r @@ fun s -> Ok (B00_lines.of_string (String.trim s))
-
+  let* r = run m ?switch "list" Cmd.(which % "--short") in
+  let list = Result.bind r @@ fun s -> Ok (B00_lines.of_string (String.trim s))
+  in
+  let list = Memo.fail_if_error m list in
+  Fut.return list
 
 (* FIXME *)
 type pkg = string * string option

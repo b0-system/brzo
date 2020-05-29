@@ -4,6 +4,7 @@
   ---------------------------------------------------------------------------*)
 
 open B00_std
+open B00_std.Fut.Syntax
 open B00
 
 module Tool = struct
@@ -17,7 +18,7 @@ module Tool = struct
 end
 
 module Conf = struct
-  let obj_ext m k = k ".o" (* FIXME *)
+  let obj_ext m = Fut.return ".o" (* FIXME *)
 end
 
 module Inc_deps = struct
@@ -62,9 +63,11 @@ module Inc_deps = struct
     Memo.spawn m ~reads ~writes @@
     gcc Cmd.(arg "-M" % "-MF" %% path o %% path src)
 
-  let read m ~src file k =
-    Memo.read m file @@ fun s ->
-    k (Memo.fail_if_error m (of_string ~file ~root:(Fpath.parent src) s))
+  let read m ~src file =
+    let* s = Memo.read m file in
+    let deps = of_string ~file ~root:(Fpath.parent src) s in
+    let deps = Memo.fail_if_error m deps in
+    Fut.return deps
 end
 
 module Compile = struct

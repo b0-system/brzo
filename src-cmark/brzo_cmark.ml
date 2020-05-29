@@ -4,6 +4,7 @@
   ---------------------------------------------------------------------------*)
 
 open B00_std
+open B00_std.Fut.Syntax
 open B00
 
 module Conf = struct
@@ -36,7 +37,7 @@ let md_to_html m ~src_root ~build_dir ~html_dir ~js_files ~css_files md =
   Memo.file_ready m md;
   B00_cmark.to_html m ~mds:[md] ~generator ~scripts ~styles ~o_frag ~o
 
-let build_web m c _ ~build_dir ~artefact ~srcs k =
+let build_web m c _ ~build_dir ~artefact ~srcs =
   let src_root = Brzo.Conf.root c and html_dir = artefact in
   let mds = B00_fexts.(find_files cmark) srcs in
   let files_to_copy = B00_fexts.(find_files www) srcs in
@@ -45,17 +46,19 @@ let build_web m c _ ~build_dir ~artefact ~srcs k =
   let md_to_html =
     md_to_html m ~src_root ~build_dir ~html_dir ~js_files ~css_files
   in
-  Memo.mkdir m html_dir @@ fun () ->
+  let* () = Memo.mkdir m html_dir in
   List.iter md_to_html mds;
   List.iter (Brzo.Memo.copy_file m ~src_root ~dst_root:html_dir) files_to_copy;
-  k ()
+  Fut.return ()
 
 (* Outcomes *)
 
 let exec =
   let name = "exec" and doc = "Build and execute an HTML program (default)." in
-  let artefact _ c _ ~build_dir k = k Fpath.(build_dir / "html") in
-  let build k = build_web k in
+  let artefact m c _ ~build_dir =
+    Fut.return Fpath.(build_dir / "html")
+  in
+  let build = build_web in
   let action = Brzo_outcome.Action.show_uri in
   Brzo_outcome.v ~name ~doc ~artefact ~build ~action_has_args:false ~action ()
 

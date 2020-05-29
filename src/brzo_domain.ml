@@ -4,6 +4,7 @@
   ---------------------------------------------------------------------------*)
 
 open B00_std
+open B00_std.Fut.Syntax
 
 (* Domains *)
 
@@ -28,36 +29,36 @@ let get_outcome_and_conf (type c) c (module D : T with type Conf.t = c) =
   let outcome_name, dc = Option.get (Brzo.Conf.domain_conf c (module D)) in
   Brzo_outcome.get outcome_name D.outcomes, dc
 
-let build_dir (type c) (module D : T with type Conf.t = c) o m c dc k =
-  Brzo_outcome.build_dir_suff o m c dc @@ fun suff ->
+let build_dir (type c) (module D : T with type Conf.t = c) o m c dc =
+  let* suff = Brzo_outcome.build_dir_suff o m c dc in
   let d = Fmt.str "%s-%s%s" D.name (Brzo_outcome.name o) suff in
   let d = Fpath.(Brzo.Conf.b0_dir c / Brzo.Conf.brzo_dir_name / d) in
-  k d
+  Fut.return d
 
-let run_outcome_build o m c dc ~build_dir ~artefact k =
+let run_outcome_build o m c dc ~build_dir ~artefact =
   let m = B00.Memo.with_mark m (Fmt.str "%s-build" (Brzo_outcome.name o)) in
   let srcs = B00.Memo.fail_if_error m (Brzo.Conf.srcs c) in
-  B00.Memo.delete m build_dir @@ fun () ->
-  B00.Memo.mkdir m build_dir @@ fun _ ->
-  (Brzo_outcome.build o) m c dc ~build_dir ~artefact ~srcs k
+  let* () = B00.Memo.delete m build_dir in
+  let* () = B00.Memo.mkdir m build_dir in
+  (Brzo_outcome.build o) m c dc ~build_dir ~artefact ~srcs
 
-let run_outcome_action o m c dc ~build_dir ~artefact k =
+let run_outcome_action o m c dc ~build_dir ~artefact =
   let m = B00.Memo.with_mark m (Fmt.str "%s-action" (Brzo_outcome.name o)) in
   match Os.Path.exists artefact |> Log.if_error ~use:false with
   | false ->
       Log.err (fun m -> m "No outcome, did you build before ?");
-      k (`Exit Brzo.Exit.no_build_outcome)
+      Fut.return (`Exit Brzo.Exit.no_build_outcome)
   | true ->
       if not (Brzo_outcome.action_has_args o) && Brzo.Conf.action_args c <> []
       then warn_if_action_args ~cause:"action has no arguments" c;
-      (Brzo_outcome.action o) m c dc ~build_dir ~artefact @@ fun act ->
-      k (`Exec act)
+      let* act = (Brzo_outcome.action o) m c dc ~build_dir ~artefact in
+      Fut.return (`Exec act)
 
-let action_mode c domain m k =
+let action_mode c domain m () =
   let o, dc = get_outcome_and_conf c domain in
-  build_dir domain o m c dc @@ fun build_dir ->
-  (Brzo_outcome.artefact o) m c dc ~build_dir @@ fun artefact ->
-  run_outcome_action o m c dc ~build_dir ~artefact k
+  let* build_dir = build_dir domain o m c dc in
+  let* artefact = (Brzo_outcome.artefact o) m c dc ~build_dir in
+  run_outcome_action o m c dc ~build_dir ~artefact
 
 let conf_mode (type c) c (module D : T with type Conf.t = c) =
   Log.if_error' ~use:Brzo.Exit.some_error @@
@@ -72,35 +73,35 @@ let conf_mode (type c) c (module D : T with type Conf.t = c) =
   end;
   Ok Brzo.Exit.ok
 
-let path_mode c domain m k =
+let path_mode c domain m () =
   let o, dc = get_outcome_and_conf c domain in
-  build_dir domain o m c dc @@ fun build_dir ->
-  (Brzo_outcome.artefact o) m c dc ~build_dir @@ fun artefact ->
+  let* build_dir = build_dir domain o m c dc in
+  let* artefact = (Brzo_outcome.artefact o) m c dc ~build_dir in
   Log.app (fun m -> m "%a" Fpath.pp_unquoted artefact);
-  k (`Exit Brzo.Exit.ok)
+  Fut.return (`Exit Brzo.Exit.ok)
 
-let delete_mode c domain m k =
+let delete_mode c domain m () =
   let o, dc = get_outcome_and_conf c domain in
-  build_dir domain o m c dc @@ fun build_dir ->
-  B00.Memo.delete m build_dir @@ fun () ->
-  k (`Exit Brzo.Exit.ok)
+  let* build_dir = build_dir domain o m c dc in
+  let* () = B00.Memo.delete m build_dir in
+  Fut.return (`Exit Brzo.Exit.ok)
 
-let build_mode c domain m k =
+let build_mode c domain m () =
   let o, dc = get_outcome_and_conf c domain in
-  build_dir domain o m c dc @@ fun build_dir ->
-  (Brzo_outcome.artefact o) m c dc ~build_dir @@ fun artefact ->
-  run_outcome_build o m c dc ~build_dir ~artefact @@ fun () ->
-  k (`Exit Brzo.Exit.ok)
+  let* build_dir = build_dir domain o m c dc in
+  let* artefact = (Brzo_outcome.artefact o) m c dc ~build_dir in
+  let* () = run_outcome_build o m c dc ~build_dir ~artefact in
+  Fut.return (`Exit Brzo.Exit.ok)
 
-let normal_mode c domain m k =
+let normal_mode c domain m () =
   let o, dc = get_outcome_and_conf c domain in
-  build_dir domain o m c dc @@ fun build_dir ->
-  (Brzo_outcome.artefact o) m c dc ~build_dir @@ fun artefact ->
-  run_outcome_build o m c dc ~build_dir ~artefact @@ fun () ->
+  let* build_dir = build_dir domain o m c dc in
+  let* artefact = (Brzo_outcome.artefact o) m c dc ~build_dir in
+  let* () = run_outcome_build o m c dc ~build_dir ~artefact in
   B00.Memo.stir m ~block:true;
   if B00.Memo.has_failures m
-  then k (`Exit Brzo.Exit.outcome_build_error)
-  else run_outcome_action o m c dc ~build_dir ~artefact k
+  then Fut.return (`Exit Brzo.Exit.outcome_build_error)
+  else run_outcome_action o m c dc ~build_dir ~artefact
 
 let run_memo ~with_log c f =
   Result.bind (Brzo.Conf.memo c) @@ fun m ->

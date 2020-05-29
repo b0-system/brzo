@@ -7,21 +7,24 @@ open B00_std
 open B00_serialk_sexp
 
 module Memo = struct
+
+  open B00_std.Fut.Syntax
+
   let copy_file m ~src_root ~dst_root src =
     let dst = Fpath.reroot ~root:src_root ~dst:dst_root src in
     B00.Memo.file_ready m src;
     B00.Memo.copy m ~src dst
 
-  let ensure_exec_build m ~srcs ~need_ext k =
+  let ensure_exec_build m ~srcs ~need_ext =
     match B00_fexts.find_files B00_fexts.(ext need_ext) srcs = [] with
-    | false -> k ()
+    | false -> Fut.return ()
     | true ->
         let bstr = Fmt.(code string) in
         B00.Memo.fail m "@[<v>No %a file found, cannot build an executable.@,\
                          @[Check %a and %a.@]@]"
           bstr need_ext bstr "brzo sources" bstr "brzo --conf"
 
-  let run ~with_log:log_file m fiber =
+  let run ~with_log:log_file m fut =
     let write_build_log m = match log_file with
     | None -> ()
     | Some log_file ->
@@ -29,12 +32,13 @@ module Memo = struct
     in
     let hook () = write_build_log m in
     Os.Sig_exit.on_sigint ~hook @@ fun () ->
-    let exit, set = B00.Memo.Fut.create m in
-    B00.Memo.spawn_fiber m (fun () -> fiber (fun v -> set v));
+    let exit, set = Fut.create () in
+    B00.Memo.run_proc m
+      (fun () -> let* v = fut () in set v; Fut.return ());
     B00.Memo.stir m ~block:true;
     let ret = match B00.Memo.status m with
     | Ok () ->
-        begin match B00.Memo.Fut.value exit with
+        begin match Fut.value exit with
         | None -> (* should not happen *) Error ()
         | Some exit -> Ok exit
         end

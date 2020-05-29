@@ -10,7 +10,7 @@ open B00_std
 type t
 (** The type for compiled interfaces. *)
 
-val read : B00.Memo.t -> Fpath.t -> t B00.Memo.fiber
+val read : B00.Memo.t -> Fpath.t -> t Fut.t
 (** [read f] reads an object file from [f]. *)
 
 val file : t -> Fpath.t

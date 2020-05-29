@@ -19,14 +19,14 @@ type ambs = [ `Ambs of (Mod_name.t * Fpath.t list) list ]
 val resolve_intf_deps :
   Mod_resolver.t -> local_mods:Mod_src.t Mod_name.Map.t -> in_dir:Fpath.t ->
   Mod_name.Set.t ->
-  (Fpath.t list * Fpath.t list * Mod_name.Set.t * ambs) Memo.fiber
+  (Fpath.t list * Fpath.t list * Mod_name.Set.t * ambs) Fut.t
 (** [resolve_intf_deps] is like {!resolve_impl_deps} but for compiling
     and interface. *)
 
 val resolve_impl_deps :
   Mod_resolver.t -> code:Cobj.code -> local_mods:Mod_src.t Mod_name.Map.t ->
   in_dir:Fpath.t -> Mod_name.Set.t ->
-  (Fpath.t list * Fpath.t list * Mod_name.Set.t * ambs) Memo.fiber
+  (Fpath.t list * Fpath.t list * Mod_name.Set.t * ambs) Fut.t
 (** [resolve_comp_deps r ~code ~local_mods ~in_dir deps] resolve
     [deps] for compiling an implementation to [code] assuming local
     module [local_mods] are compiled in [in_dir]. This results in
@@ -40,17 +40,16 @@ val resolve_impl_deps :
     {- [amb] are the external resolutions that were ambiguous.}} *)
 
 val handle_amb_deps :
-  Mod_resolver.t -> Fpath.t -> unresolved:Mod_name.Set.t -> ambs ->
-  unit Memo.fiber
+  Mod_resolver.t -> Fpath.t -> unresolved:Mod_name.Set.t -> ambs -> unit Fut.t
 (** [handle_amb_deps file ~unresolved ambs] continues if [ambs] is
-    empty and otherwise fails the fiber with help on how to restrict
+    empty and otherwise fails the fiber (* FIXME *) with help on how to restrict
     the resolver or getting unresolved dependencies. [file] is the
     file for which amibguities were reported. *)
 
 val handle_miss_user_deps :
-  Mod_resolver.t -> [`Miss_deps of Mod_resolver.dep list ] -> unit Memo.fiber
+  Mod_resolver.t -> [`Miss_deps of Mod_resolver.dep list ] -> unit Fut.t
 (** [handle_miss_user_deps r miss k] continues with [k] if [miss] is empty
-    and otherwise fails the fiber with help on how to try to get the
+    and otherwise fails the Fut.t with help on how to try to get the
     missing dependencies. *)
 
 (** {1:suggest Suggesting} *)

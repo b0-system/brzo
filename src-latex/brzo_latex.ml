@@ -4,6 +4,7 @@
   ---------------------------------------------------------------------------*)
 
 open B00_std
+open B00_std.Fut.Syntax
 open B00
 open B00_serialk_sexp
 open Brzo_b0_latex
@@ -78,16 +79,20 @@ let bibdoi_to_bib m c dc bibdoi =
   let httpr = B00_http.Httpr.find_curl ~curl:dc.Conf.curl () in
   begin
     Memo.file_ready m bibdoi;
-    Memo.read m bibdoi @@ fun contents ->
-    Memo.write m ~stamp:"%%VERSION%%" ~reads:[bibdoi] bib @@ fun () ->
-    Result.bind (Bibdoi.of_string ~file:bibdoi contents) @@ fun b ->
-    (* We should memoize each curl invocation *)
-    Result.bind httpr @@ fun r ->
-    Bibdoi.to_bibtex ~resolver:(Conf.doi_resolver dc) r b
+    ignore @@
+    let* contents = Memo.read m bibdoi in
+    begin
+      Memo.write m ~stamp:"%%VERSION%%" ~reads:[bibdoi] bib @@ fun () ->
+      Result.bind (Bibdoi.of_string ~file:bibdoi contents) @@ fun b ->
+      Result.bind httpr @@ fun r ->
+      (* We should memoize each curl invocation *)
+      Bibdoi.to_bibtex ~resolver:(Conf.doi_resolver dc) r b
+    end;
+    Fut.return ()
   end;
   bib
 
-let find_main m c dc ~texs k =
+let find_main m c dc ~texs =
   let not_found m =
     Memo.fail m
       "@[<v>Could not detect a main tex file.@, Use %a to specify one.@]"
@@ -106,20 +111,20 @@ let find_main m c dc ~texs k =
   match Conf.main dc with
   | Some main ->
       let main = Fpath.(Brzo.Conf.root c // main) in
-      if List.mem main texs then k main else
+      if List.mem main texs then Fut.return main else
       Memo.fail m "Main file %a not found in %a sources."
         Fmt.(code Fpath.pp_unquoted) main Fmt.(code string) ".tex"
   | None ->
       match texs with
       | [] -> failwith "TODO if there's bib create a doc with the whole bib"
-      | [t] -> k t
+      | [t] -> Fut.return t
       | texs ->
           match find_basename "main.tex" texs with
-          | Some t -> k t
+          | Some t -> Fut.return t
           | None ->
               let root_name = Fpath.basename ~no_ext:true (Brzo.Conf.root c) in
               match find_basename (Fmt.str "%s.tex" root_name) texs with
-              | Some t -> k t
+              | Some t -> Fut.return t
               | None -> not_found m
 
 (*
@@ -135,13 +140,13 @@ let find_main m c dc ~texs k =
 *)
 
 
-let exec_build m c dc ~build_dir ~artefact ~srcs k =
+let exec_build m c dc ~build_dir ~artefact ~srcs =
   let stys = B00_fexts.(find_files (ext ".sty") srcs) in
   let texs = B00_fexts.(find_files tex srcs) in
   let bibs = B00_fexts.(find_files (ext ".bib") srcs) in
   let bibdois = B00_fexts.(find_files (ext ".bibdoi") srcs) in
   let doibibs = List.rev_map (bibdoi_to_bib m c dc) bibdois in
-  find_main m c dc ~texs @@ fun main ->
+  let* main = find_main m c dc ~texs in
   let xelatex = Memo.tool m Tool.xelatex in
   let _aux = Fpath.(artefact -+ ".aux") in
   let _toc = Fpath.(artefact -+ ".toc") in
@@ -163,11 +168,13 @@ let exec_build m c dc ~build_dir ~artefact ~srcs k =
   let k _ = Os.Cmd.run Cmd.(arg "xelatex" %% cli) |> Result.get_ok in
   Memo.spawn m ~k ~reads ~writes:[] @@
   xelatex cli;
-  k ()
+  Fut.return ()
 
 let exec =
   let name = "exec" and doc = "Build and show a PDF (default)." in
-  let artefact _ _ _ ~build_dir k = k (Fpath.(build_dir / "a.pdf")) in
+  let artefact m _ _ ~build_dir =
+    Fut.return (Fpath.(build_dir / "a.pdf"))
+  in
   let build = exec_build in
   let action = Brzo_outcome.Action.show_pdf in
   Brzo_outcome.v ~name ~doc ~artefact ~build ~action_has_args:false ~action ()
@@ -330,10 +337,10 @@ let write_listing m ~src_root srcs ~o =
   in
   Memo.write m ~stamp ~reads:srcs o @@ fun () -> Ok doc
 
-let listings_artefact _ c _ ~build_dir k =
+let listings_artefact m c _ ~build_dir =
   let src_root = Brzo.Conf.root c in
   let name = Fpath.(basename src_root) in
-  k Fpath.(build_dir / Fmt.str "%s-listing.pdf" name)
+  Fut.return Fpath.(build_dir / Fmt.str "%s-listing.pdf" name)
 
 let sort_src_paths p0 p1 =
   let p0, ext0 = Fpath.cut_ext p0 and p1, ext1 = Fpath.cut_ext p1 in
@@ -344,7 +351,7 @@ let sort_src_paths p0 p1 =
   | ".mli", ".ml" -> -1 | ".ml", ".mli" -> 1
   | ext0, ext1 -> String.compare ext0 ext1
 
-let listing_build m c _ ~build_dir ~artefact ~srcs kont =
+let listing_build m c _ ~build_dir ~artefact ~srcs =
   let srcs = B00_fexts.(find_files supported_srcs srcs) in
   let srcs = List.sort sort_src_paths srcs in
   let src_root = Brzo.Conf.root c in
@@ -363,7 +370,7 @@ let listing_build m c _ ~build_dir ~artefact ~srcs kont =
   let k _ = Os.Cmd.run Cmd.(arg "xelatex" %% cli) |> Result.get_ok in
   Memo.spawn m ~reads:(doc_file :: srcs) ~writes:[artefact; aux; toc; out] ~k
   @@ xelatex cli;
-  kont ()
+  Fut.return ()
 
 let listing =
   let name = "listing" in

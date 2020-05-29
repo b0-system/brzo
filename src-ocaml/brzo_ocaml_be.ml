@@ -4,6 +4,7 @@
   ---------------------------------------------------------------------------*)
 
 open B00_std
+open B00_std.Fut.Syntax
 open B00
 open B00_ocaml
 open Brzo_b0_ocaml
@@ -15,10 +16,10 @@ open Brzo_b0_ocaml
 
 type ambs = [`Ambs of (Mod_name.t * Fpath.t list) list ]
 
-let resolve_cmis_mod_refs r cmis mod_refs k =
-  let rec loop r cmis seen to_find = match Mod_ref.Set.choose to_find with
-  | exception Not_found -> k cmis
-  | dep ->
+let resolve_cmis_mod_refs r cmis mod_refs =
+  let rec loop r cmis seen to_find = match Mod_ref.Set.choose_opt to_find with
+  | None -> Fut.return cmis
+  | Some dep ->
       let to_find = Mod_ref.Set.remove dep to_find in
       if Mod_ref.Set.mem dep seen then loop r cmis seen to_find else
       let seen = Mod_ref.Set.add dep seen in
@@ -26,7 +27,7 @@ let resolve_cmis_mod_refs r cmis mod_refs k =
          ambs and not found refs here. Wishfull thinking: I suspect if
          something bad happens the error will show up somewhere else in a
          meaningful way if that's a problem. *)
-      Mod_resolver.find_cmis_for_mod_ref r dep @@ function
+      Fut.bind (Mod_resolver.find_cmis_for_mod_ref r dep) @@ function
       | cmi :: _ ->
           let to_find = Mod_ref.Set.union (Brzo_ocaml_cmi.deps cmi) to_find in
           loop r (cmi :: cmis) seen to_find
@@ -44,29 +45,29 @@ let resolve_cmis_mod_refs r cmis mod_refs k =
   in
   loop r cmis seen to_find
 
-let resolution_cmis_dep_objs r ~code cmis mod_refs k =
-  resolve_cmis_mod_refs r cmis mod_refs @@ fun cmis ->
+let resolution_cmis_dep_objs r ~code cmis mod_refs =
+  let* cmis = resolve_cmis_mod_refs r cmis mod_refs in
   let add_dep_objs acc cmi =
     let acc = Brzo_ocaml_cmi.file cmi :: acc in
     if code = Cobj.Byte then acc else
     match Mod_resolver.find_cmi_side_cmx_file r cmi with
     | None -> acc | Some cmx -> cmx :: acc
   in
-  k (List.fold_left add_dep_objs [] cmis)
+  Fut.return (List.fold_left add_dep_objs [] cmis)
 
-let finish_impl_resolution r ~code cmis mod_refs ambs remain k =
-  resolution_cmis_dep_objs r ~code cmis mod_refs @@
-  fun objs -> k (objs, remain, (`Ambs ambs))
+let finish_impl_resolution r ~code cmis mod_refs ambs remain =
+  let* objs = resolution_cmis_dep_objs r ~code cmis mod_refs in
+  Fut.return (objs, remain, (`Ambs ambs))
 
-let resolve_external_impl_deps r ~code deps mod_refs k =
+let resolve_external_impl_deps r ~code deps mod_refs =
   let rec loop r changed cmis ambs resolved retry todo =
-    match Mod_name.Set.choose todo with
-    | exception Not_found ->
+    match Mod_name.Set.choose_opt todo with
+    | None ->
         let retry = Mod_name.Set.diff retry resolved in
         if Mod_name.Set.is_empty retry || not changed
-        then (finish_impl_resolution r ~code cmis mod_refs ambs retry k)
+        then (finish_impl_resolution r ~code cmis mod_refs ambs retry)
         else (loop r false cmis [] resolved Mod_name.Set.empty retry)
-    | dep ->
+    | Some dep ->
         let todo = Mod_name.Set.remove dep todo in
         if Mod_name.Set.mem dep resolved
         then loop r changed cmis ambs resolved retry todo else
@@ -74,7 +75,7 @@ let resolve_external_impl_deps r ~code deps mod_refs k =
         | [] ->
             loop r changed cmis ambs resolved (Mod_name.Set.add dep retry) todo
         | [cmi] ->
-            Memo.Fut.await (Mod_resolver.cmi_obj r cmi) @@ fun cmi_obj ->
+            let* cmi_obj = Mod_resolver.cmi_obj r cmi in
             let cmi_names = Brzo_ocaml_cmi.mod_names cmi_obj in
             let resolved = String.Set.union resolved cmi_names in
             loop r true (cmi_obj :: cmis) ambs resolved retry todo
@@ -84,15 +85,16 @@ let resolve_external_impl_deps r ~code deps mod_refs k =
   in
   loop r false [] [] Mod_name.Set.empty Mod_name.Set.empty deps
 
-let resolve_impl_deps r ~code ~local_mods ~in_dir deps k =
-  let prune_cmis_mod_names r deps reads k =
+let resolve_impl_deps r ~code ~local_mods ~in_dir deps =
+  let prune_cmis_mod_names r deps reads =
     let rec loop b deps mod_refs = function
-    | [] -> k (deps, mod_refs)
+    | [] -> Fut.return (deps, mod_refs)
     | obj :: reads ->
         if not (Fpath.has_ext ".cmi" obj) then loop b deps mod_refs reads else
-        Memo.Fut.await (Mod_resolver.cmi_obj r obj) @@ fun cmi_obj ->
+        let* cmi_obj = Mod_resolver.cmi_obj r obj in
         let deps = String.Set.diff deps (Brzo_ocaml_cmi.mod_names cmi_obj) in
-        let mod_refs = Mod_ref.Set.union mod_refs (Brzo_ocaml_cmi.deps cmi_obj) in
+        let mod_refs = Mod_ref.Set.union mod_refs (Brzo_ocaml_cmi.deps cmi_obj)
+        in
         loop b deps mod_refs reads
     in
     loop r deps Mod_ref.Set.empty reads
@@ -100,19 +102,20 @@ let resolve_impl_deps r ~code ~local_mods ~in_dir deps k =
   let local_mods, deps = Mod_src.find_local_deps local_mods deps in
   let add_mod acc m = Mod_src.as_impl_dep_files ~init:acc ~code ~in_dir m in
   let local_objs = List.fold_left add_mod [] local_mods in
-  prune_cmis_mod_names r deps local_objs @@ fun (deps, mod_refs) ->
-  resolve_external_impl_deps r ~code deps mod_refs @@
-  fun (ext_objs, deps, ambs) -> k (local_objs, ext_objs, deps, ambs)
+  let* deps, mod_refs = prune_cmis_mod_names r deps local_objs in
+  let* ext_objs, deps, ambs = resolve_external_impl_deps r ~code deps mod_refs
+  in
+  Fut.return (local_objs, ext_objs, deps, ambs)
 
-let resolve_intf_deps r ~local_mods ~in_dir deps k =
+let resolve_intf_deps r ~local_mods ~in_dir deps =
   (* XXX maybe we should really try to distinguish intf/impl paths.
      We are cheating for now. *)
-  resolve_impl_deps r ~code:Cobj.Byte ~local_mods ~in_dir deps k
+  resolve_impl_deps r ~code:Cobj.Byte ~local_mods ~in_dir deps
 
 (* Handling ambiguous deps *)
 
-let handle_amb_deps r file ~unresolved (`Ambs ambs) k = match ambs with
-| [] -> k ()
+let handle_amb_deps r file ~unresolved (`Ambs ambs) = match ambs with
+| [] -> Fut.return ()
 | ambs ->
     let pp_unresolved ppf deps = (* FIXME maybe try to indicate installs *)
       let deps = Mod_name.Set.elements deps in
@@ -199,11 +202,11 @@ let get_miss_deps_help r opam_pkgs miss_deps =
   in
   loop [] [] miss_deps
 
-let handle_miss_user_deps r (`Miss_deps miss_deps) k = match miss_deps with
-| [] -> k ()
+let handle_miss_user_deps r (`Miss_deps miss_deps) = match miss_deps with
+| [] -> Fut.return ()
 | miss_deps ->
     let m = Mod_resolver.memo r in
-    Brzo_b0_opam.if_exists m (Brzo_b0_opam.list m `Available) @@ fun pkgs ->
+    let* pkgs = Brzo_b0_opam.if_exists m (Brzo_b0_opam.list m `Available) in
     let opam_pkgs = match pkgs with None -> [] | Some pkgs -> pkgs in
     let help = get_miss_deps_help r opam_pkgs miss_deps in
     Memo.fail (Mod_resolver.memo r) "%a" pp_miss_deps_help help

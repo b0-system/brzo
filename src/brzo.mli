@@ -16,15 +16,14 @@ module Memo : sig
         {!root_path}[ ~src_root ~dst_root src]. *)
 
   val ensure_exec_build :
-    B00.Memo.t -> srcs:B00_fexts.map -> need_ext:Fpath.ext ->
-    unit B00.Memo.fiber
+    B00.Memo.t -> srcs:B00_fexts.map -> need_ext:Fpath.ext -> unit Fut.t
   (** [ensure_exe_build m ~srcs ~need_ext k] continues iff there's
       at least a file in [srcs] that has exention [need_ext] and fails
       with a message that no executable can be built otherwise. *)
 
   val run :
-    with_log:Fpath.t option -> B00.Memo.Fut.memo ->
-    'a B00.Memo.fiber -> ('a, unit) result
+    with_log:Fpath.t option -> B00.Memo.t -> (unit -> 'a Fut.t) ->
+    ('a, unit) result
 end
 
 (** Program exits. *)

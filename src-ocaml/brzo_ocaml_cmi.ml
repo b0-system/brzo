@@ -4,9 +4,9 @@
   ---------------------------------------------------------------------------*)
 
 open B00_std
+open B00_std.Fut.Syntax
 open B00
 open B00_ocaml
-
 
 type t =
   { file : Fpath.t;
@@ -14,15 +14,15 @@ type t =
     mod_names : Mod_name.Set.t;
     deps : Mod_ref.Set.t }
 
-let read m file k =
-  Memo.wait_files m [file] @@ fun () ->
+let read m file =
+  let* () = Memo.wait_files m [file] in
   let name, digest, mod_names, deps =
     Brzo_read_cmi.read file |> Memo.fail_if_error m
   in
   let mod_ref = Mod_ref.v name digest in
   let add_dep acc (n, d) = Mod_ref.Set.add (Mod_ref.v n d) acc in
   let deps = List.fold_left add_dep Mod_ref.Set.empty deps in
-  k { file; mod_ref; mod_names; deps }
+  Fut.return { file; mod_ref; mod_names; deps }
 
 let file cmi = cmi.file
 let mod_ref cmi = cmi.mod_ref

@@ -23,9 +23,11 @@ module Default = struct
   let fingerprint = String.Set.empty
   let outcomes = (* Fake outcomes for docs never actually used *)
     let nop name arg doc  =
-      let artefact _ _ _ ~build_dir k = k build_dir in
-      let build _ _ _ ~build_dir ~artefact ~srcs k = k () in
-      let action _ _ _ ~build_dir ~artefact k = k (fun () -> assert false) in
+      let artefact m _ _ ~build_dir = Fut.return build_dir in
+      let build m _ _ ~build_dir ~artefact ~srcs = Fut.return () in
+      let action m _ _ ~build_dir ~artefact =
+        Fut.return (fun () -> assert false)
+      in
       Brzo_outcome.v ~name ~doc ~artefact ~build ~action_has_args:arg ~action ()
     in
     [ nop "exec" true "$(b,exec) outcome of the default domain (default).";

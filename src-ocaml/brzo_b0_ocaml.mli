@@ -80,7 +80,7 @@ module Mod_resolver : sig
       {b Note.} File objects returned by [find_*] functions are made ready
       in [memo r]. *)
 
-  val cmi_obj : t -> Fpath.t -> Brzo_ocaml_cmi.t Memo.Fut.t
+  val cmi_obj : t -> Fpath.t -> Brzo_ocaml_cmi.t Fut.t
   (** [cmi_obj r file] asks for the cmi compilation object of file [file].
       FIXME let the fut be a fiber. *)
 
@@ -94,24 +94,24 @@ module Mod_resolver : sig
       resolve to module name [mn]. *)
 
   val find_cmis_for_mod_name :
-    t -> B00_ocaml.Mod_name.t -> Brzo_ocaml_cmi.t list Memo.fiber
+    t -> B00_ocaml.Mod_name.t -> Brzo_ocaml_cmi.t list Fut.t
   (** [find_cmis_for_mod_name r mn] finds cmi information for files
       whose filename could resolve to module name [mn] in [r]. *)
 
   val find_cmis_for_mod_ref :
-    t -> B00_ocaml.Mod_ref.t -> Brzo_ocaml_cmi.t list Memo.fiber
+    t -> B00_ocaml.Mod_ref.t -> Brzo_ocaml_cmi.t list Fut.t
   (** [find_cmis_for_mod_ref r mref] are the cmis that resolve to [mref]
       in [r]. *)
 
   val find_impl_for_mod_ref :
-    t -> ext:string -> B00_ocaml.Mod_ref.t -> B00_ocaml.Cobj.t option Memo.fiber
+    t -> ext:string -> B00_ocaml.Mod_ref.t -> B00_ocaml.Cobj.t option Fut.t
   (** [find_impl_for_mod_ref r ~ext mref] continues with an
       implementation file for [mref] with extension [ext] and a
       suitable cmi file to use. *)
 
   val find_rec_impls_for_mod_refs :
     ?deps:(B00_ocaml.Cobj.t -> B00_ocaml.Mod_ref.Set.t) -> t -> ext:string ->
-    B00_ocaml.Mod_ref.Set.t -> B00_ocaml.Cobj.t list Memo.fiber
+    B00_ocaml.Mod_ref.Set.t -> B00_ocaml.Cobj.t list Fut.t
   (** [find_rec_impls_for_mod_refs ~deps r ~ext mrefs] continues with a list
       of implementation files with extentions [ext] for [mref]s and
       their recursive dependencies determined according to [deps]
