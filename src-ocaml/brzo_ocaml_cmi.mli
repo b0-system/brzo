@@ -6,6 +6,7 @@
 (** Compiled interfaces. *)
 
 open B00_std
+open B00_ocaml
 
 type t
 (** The type for compiled interfaces. *)
@@ -16,13 +17,13 @@ val read : B00.Memo.t -> Fpath.t -> t Fut.t
 val file : t -> Fpath.t
 (** [file cmi] is the file path of [cmi]. *)
 
-val mod_ref : t -> B00_ocaml.Mod_ref.t
+val mod_ref : t -> Mod.Ref.t
 (** [mod_ref cmi] is the module reference of [cmi]. *)
 
-val deps : t -> B00_ocaml.Mod_ref.Set.t
+val deps : t -> Mod.Ref.Set.t
 (** [deps cmi] is the set of modules interfaces imported by [cmi]. *)
 
-val mod_names : t -> B00_ocaml.Mod_name.Set.t
+val mod_names : t -> Mod.Name.Set.t
 (** [mod_names cmi] are the unqualified module names defined by
         [cmi] (including its name). Sligthly wrong because stops at module
         aliases, these are not resolved to further cmis. *)

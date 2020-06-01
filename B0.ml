@@ -1,29 +1,31 @@
 open B0_kit.V000
 open B00_std
-open B00.Memo.Fut.Syntax
+open B00_std.Fut.Syntax
 
 (* OCaml library names *)
 
 let cmdliner = B0_ocaml.lib "cmdliner"
-let b00_std = B0_ocaml.lib "b0.b00.std"
-let b00 = B0_ocaml.lib "b0.b00"
-let b00_kit = B0_ocaml.lib "b0.b00.kit"
+let b0_b00_std = B0_ocaml.lib "b0.b00.std"
+let b0_b00 = B0_ocaml.lib "b0.b00"
+let b0_b00_kit = B0_ocaml.lib "b0.b00.kit"
 let compiler_libs_common = B0_ocaml.lib "compiler-libs.common"
 
 (* Units *)
 
 let brzo_tool =
-  let requires = [cmdliner; b00_std; b00; b00_kit; compiler_libs_common] in
+  let requires =
+    [cmdliner; b0_b00_std; b0_b00; b0_b00_kit; compiler_libs_common]
+  in
   let ocaml_cond b =
-    let* conf = B0_build.get b B00_ocaml.Conf.key in
-    let root_dir = B0_build.Unit.root_dir b (B0_build.Unit.current b) in
-    let dir = match B00_ocaml.Conf.version conf with
+    let* version = B0_ocaml.version b in
+    let dir = match version with
     | v when v < (3, 08, 0, None) -> "brzo_read_cmi_pre_408"
     | _ -> "brzo_read_cmi_geq_408"
     in
+    let root_dir = B0_build.current_root_dir b in
     let file = Fpath.(root_dir / "src-ocaml" / dir / "brzo_read_cmi.ml") in
     B00.Memo.file_ready (B0_build.memo b) file;
-    B00.Memo.Fut.return (B0_build.memo b) (Fpath.Set.singleton file)
+    Fut.return (Fpath.Set.singleton file)
   in
   let srcs =
     [`Dir "src"; `Dir "src-c"; `Dir "src-cmark"; `Dir "src-latex";
@@ -45,4 +47,4 @@ let default =
       repo, "git+https://erratique.ch/repos/brzo.git";
       issues, "https://github.com/b0-system/brzo/issues"; ]
   in
-  B0_pack.v "default" ~doc:"brzo tool" ~meta ~locked:true units
+  B0_pack.v "default" ~doc:"The brzo project" ~meta ~locked:true units

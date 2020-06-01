@@ -6,6 +6,7 @@
 open B00_std
 open B00_std.Fut.Syntax
 open B00
+open B00_ocaml
 
 module Mod_resolver = struct
   type dep = Fpath.t
@@ -36,10 +37,10 @@ module Mod_resolver = struct
       deps : deps;
       restrictions : Fpath.t list; (* existing (dep_dirs x deps) dirs *)
       mutable cmi_by_file : Brzo_ocaml_cmi.t Fut.t Fpath.Map.t;
-      mutable mod_ref_cmi : Brzo_ocaml_cmi.t list B00_ocaml.Mod_ref.Map.t;
+      mutable mod_ref_cmi : Brzo_ocaml_cmi.t list Mod.Ref.Map.t;
       mutable cobjs :
-        B00_ocaml.Cobj.t list Fut.t Fpath.Map.t; (* Mapped by dir. *)
-      mutable mod_ref_cobj : B00_ocaml.Cobj.t list B00_ocaml.Mod_ref.Map.t; }
+        Cobj.t list Fut.t Fpath.Map.t; (* Mapped by dir. *)
+      mutable mod_ref_cobj : Cobj.t list Mod.Ref.Map.t; }
 
   let create m ~memo_dir ~dep_dirs deps =
     let m = B00.Memo.with_mark m "ocaml.mod_resolver" in
@@ -50,8 +51,8 @@ module Mod_resolver = struct
     in
     let restrictions, miss = restrictions m index dep_dirs deps in
     { m; memo_dir; index; deps; restrictions;
-      cmi_by_file = Fpath.Map.empty; mod_ref_cmi = B00_ocaml.Mod_ref.Map.empty;
-      cobjs = Fpath.Map.empty; mod_ref_cobj = B00_ocaml.Mod_ref.Map.empty; },
+      cmi_by_file = Fpath.Map.empty; mod_ref_cmi = Mod.Ref.Map.empty;
+      cobjs = Fpath.Map.empty; mod_ref_cobj = Mod.Ref.Map.empty; },
     `Miss_deps miss
 
   let memo r = r.m
@@ -108,7 +109,7 @@ module Mod_resolver = struct
         ignore @@
         let* info = Brzo_ocaml_cmi.read r.m cmi_file in
         r.mod_ref_cmi <-
-          B00_ocaml.Mod_ref.Map.add_to_list
+          Mod.Ref.Map.add_to_list
             (Brzo_ocaml_cmi.mod_ref info) info r.mod_ref_cmi;
         set_info info;
         Fut.return ()
@@ -133,19 +134,19 @@ module Mod_resolver = struct
     Fut.of_list (List.map (cmi_obj r) cmis)
 
   let find_cmis_for_mod_ref r ref =
-    match B00_ocaml.Mod_ref.Map.find_opt ref r.mod_ref_cmi with
+    match Mod.Ref.Map.find_opt ref r.mod_ref_cmi with
     | Some cmis -> Fut.return cmis
     | None ->
         let cmi_files =
-          find_cmi_files_for_mod_name r (B00_ocaml.Mod_ref.name ref)
+          find_cmi_files_for_mod_name r (Mod.Ref.name ref)
         in
         let cmi_objs = List.map (cmi_obj r) cmi_files in
         let* infos = Fut.of_list cmi_objs in
-        match B00_ocaml.Mod_ref.Map.find_opt ref r.mod_ref_cmi with
+        match Mod.Ref.Map.find_opt ref r.mod_ref_cmi with
         | Some infos -> Fut.return infos
         | None ->
             Memo.fail r.m "%a: couldn't find a matching cmi: %a"
-              B00_ocaml.Mod_ref.pp ref
+              Mod.Ref.pp ref
               Fmt.(list Fpath.pp_quoted) cmi_files
 
   let get_cobjs_info ~ext r dir = match Fpath.Map.find_opt dir r.cobjs with
@@ -166,15 +167,15 @@ module Mod_resolver = struct
         if ext = ".cmxa" then begin
           List.iter (fun o -> Memo.file_ready r.m (Fpath.set_ext ".a" o)) cobjs
         end;
-        B00_ocaml.Cobj.write r.m ~cobjs ~o;
-        let* cobjs = B00_ocaml.Cobj.read r.m o in
+        Cobj.write r.m ~cobjs ~o;
+        let* cobjs = Cobj.read r.m o in
         let add_mod_ref cobj def =
           r.mod_ref_cobj <-
-            B00_ocaml.Mod_ref.Map.add_to_list def cobj r.mod_ref_cobj
+            Mod.Ref.Map.add_to_list def cobj r.mod_ref_cobj
         in
         let add_mod_refs cobj =
-          B00_ocaml.Mod_ref.Set.iter (add_mod_ref cobj)
-            (B00_ocaml.Cobj.defs cobj)
+          Mod.Ref.Set.iter (add_mod_ref cobj)
+            (Cobj.defs cobj)
         in
         List.iter add_mod_refs cobjs;
         set_info cobjs;
@@ -185,22 +186,22 @@ module Mod_resolver = struct
   let find_impl_for_mod_ref r ~ext ref =
     let amb cobjs =
       let pext = ".p" ^ ext in (* TODO doc filter out profile objects *)
-      let not_pext cobj = not (Fpath.has_ext pext (B00_ocaml.Cobj.file cobj)) in
+      let not_pext cobj = not (Fpath.has_ext pext (Cobj.file cobj)) in
       match List.filter not_pext cobjs with
       | [cobj] -> Fut.return (Some cobj)
       | cobjs ->
           (* FIXME constraints. *)
           Memo.fail r.m "@[<v>ambiguous resolution for %a:@,%a@]"
-            B00_ocaml.Mod_ref.pp ref (Fmt.list B00_ocaml.Cobj.pp) cobjs
+            Mod.Ref.pp ref (Fmt.list Cobj.pp) cobjs
     in
-    match B00_ocaml.Mod_ref.Map.find_opt ref r.mod_ref_cobj with
+    match Mod.Ref.Map.find_opt ref r.mod_ref_cobj with
     | Some [cobj] -> Fut.return (Some cobj)
     | Some cobjs -> amb cobjs
     | None ->
         Fut.bind (find_cmis_for_mod_ref r ref) @@ function
         | [] ->
             Memo.fail r.m "Could not resolve %a to a cmi file"
-              B00_ocaml.Mod_ref.pp ref
+              Mod.Ref.pp ref
         | cmis ->
             let rec loop r = function
             | cmi :: cmis ->
@@ -210,7 +211,7 @@ module Mod_resolver = struct
                 | [] -> loop r cmis
                 | dir :: dirs ->
                     let* info = get_cobjs_info r ~ext dir in
-                    match B00_ocaml.Mod_ref.Map.find_opt ref r.mod_ref_cobj with
+                    match Mod.Ref.Map.find_opt ref r.mod_ref_cobj with
                     | Some [cobj] -> Fut.return (Some cobj)
                     | Some cobjs -> amb cobjs
                     | None -> go dirs
@@ -221,42 +222,42 @@ module Mod_resolver = struct
             loop r cmis
 
   let find_rec_impls_for_mod_refs
-      ?(deps = B00_ocaml.Cobj.link_deps) r ~ext mrefs
+      ?(deps = Cobj.link_deps) r ~ext mrefs
     =
     let rec loop b cobjs defined todo =
-      match B00_ocaml.Mod_ref.Set.choose_opt todo with
+      match Mod.Ref.Set.choose_opt todo with
       | None ->
-          let cobjs = B00_ocaml.Cobj.Set.elements cobjs in
-          let cobjs, _ = B00_ocaml.Cobj.sort ~deps cobjs in
+          let cobjs = Cobj.Set.elements cobjs in
+          let cobjs, _ = Cobj.sort ~deps cobjs in
           Fut.return cobjs
       | Some ref ->
-          let todo = B00_ocaml.Mod_ref.Set.remove ref todo in
-          match B00_ocaml.Mod_ref.Set.mem ref defined with
+          let todo = Mod.Ref.Set.remove ref todo in
+          match Mod.Ref.Set.mem ref defined with
           | true -> loop b cobjs defined todo
           | false ->
               Fut.bind (find_impl_for_mod_ref r ~ext ref) @@ function
               | None ->
                   Log.debug begin fun m ->
                     m "No resolution for %a, assuming cmi only"
-                      B00_ocaml.Mod_ref.pp ref
+                      Mod.Ref.pp ref
                   end;
                   (* FIXME for toplevels this should be added to the include
                      set *)
-                  let defined = B00_ocaml.Mod_ref.Set.add ref defined in
+                  let defined = Mod.Ref.Set.add ref defined in
                   loop b cobjs defined todo
               | Some cobj ->
-                  let cobjs = B00_ocaml.Cobj.Set.add cobj cobjs in
+                  let cobjs = Cobj.Set.add cobj cobjs in
                   let defined =
-                    B00_ocaml.Mod_ref.Set.union
-                      (B00_ocaml.Cobj.defs cobj) defined
+                    Mod.Ref.Set.union
+                      (Cobj.defs cobj) defined
                   in
                   let new_refs =
-                    B00_ocaml.Mod_ref.Set.diff (deps cobj) defined
+                    Mod.Ref.Set.diff (deps cobj) defined
                   in
-                  let todo = B00_ocaml.Mod_ref.Set.union todo new_refs in
+                  let todo = Mod.Ref.Set.union todo new_refs in
                   loop b cobjs defined todo
     in
-    loop r B00_ocaml.Cobj.Set.empty B00_ocaml.Mod_ref.Set.empty mrefs
+    loop r Cobj.Set.empty Mod.Ref.Set.empty mrefs
 end
 
 (*---------------------------------------------------------------------------

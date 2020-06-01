@@ -12,21 +12,21 @@ open B00
 open B00_ocaml
 open Brzo_b0_ocaml
 
-type ambs = [ `Ambs of (Mod_name.t * Fpath.t list) list ]
+type ambs = [ `Ambs of (Mod.Name.t * Fpath.t list) list ]
 (** The type for ambiguous external resolutions. The module name
     and the list of files that could match. *)
 
 val resolve_intf_deps :
-  Mod_resolver.t -> local_mods:Mod_src.t Mod_name.Map.t -> in_dir:Fpath.t ->
-  Mod_name.Set.t ->
-  (Fpath.t list * Fpath.t list * Mod_name.Set.t * ambs) Fut.t
+  Mod_resolver.t -> local_mods:Mod.Src.t Mod.Name.Map.t -> in_dir:Fpath.t ->
+  Mod.Name.Set.t ->
+  (Fpath.t list * Fpath.t list * Mod.Name.Set.t * ambs) Fut.t
 (** [resolve_intf_deps] is like {!resolve_impl_deps} but for compiling
     and interface. *)
 
 val resolve_impl_deps :
-  Mod_resolver.t -> code:Cobj.code -> local_mods:Mod_src.t Mod_name.Map.t ->
-  in_dir:Fpath.t -> Mod_name.Set.t ->
-  (Fpath.t list * Fpath.t list * Mod_name.Set.t * ambs) Fut.t
+  Mod_resolver.t -> code:Compile.code -> local_mods:Mod.Src.t Mod.Name.Map.t ->
+  in_dir:Fpath.t -> Mod.Name.Set.t ->
+  (Fpath.t list * Fpath.t list * Mod.Name.Set.t * ambs) Fut.t
 (** [resolve_comp_deps r ~code ~local_mods ~in_dir deps] resolve
     [deps] for compiling an implementation to [code] assuming local
     module [local_mods] are compiled in [in_dir]. This results in
@@ -40,7 +40,7 @@ val resolve_impl_deps :
     {- [amb] are the external resolutions that were ambiguous.}} *)
 
 val handle_amb_deps :
-  Mod_resolver.t -> Fpath.t -> unresolved:Mod_name.Set.t -> ambs -> unit Fut.t
+  Mod_resolver.t -> Fpath.t -> unresolved:Mod.Name.Set.t -> ambs -> unit Fut.t
 (** [handle_amb_deps file ~unresolved ambs] continues if [ambs] is
     empty and otherwise fails the fiber (* FIXME *) with help on how to restrict
     the resolver or getting unresolved dependencies. [file] is the
@@ -54,7 +54,7 @@ val handle_miss_user_deps :
 
 (** {1:suggest Suggesting} *)
 
-val suggest_pkgs_for_mod_name : Mod_name.t ->
+val suggest_pkgs_for_mod_name : Mod.Name.t ->
   pkgs:(string * string option) list ->
   [ `Fuzzy_prefix_match of string list | `Prefix_match of string | `None ]
 (** [suggest_package_for_mod_name m pkgs] does basically what it says. *)
