@@ -15,12 +15,12 @@ module Js_of_ocaml = struct
   let compile ?args:(more_args = Cmd.empty) m ~byte_exe ~o =
     let js_of_ocaml = Memo.tool m tool in
     Memo.spawn m ~reads:[byte_exe] ~writes:[o] @@
-    js_of_ocaml Cmd.(arg "-o" %% (path o) %% more_args %% path byte_exe)
+    js_of_ocaml Cmd.(atom "-o" %% (path o) %% more_args %% path byte_exe)
 
   let compile_toplevel ?args:(more_args = Cmd.empty) m ~byte_exe ~mod_names ~o =
     let js_of_ocaml = Memo.tool m tool in
     Memo.spawn m ~reads:[byte_exe; mod_names] ~writes:[o] @@
-    js_of_ocaml Cmd.(arg "-o" %% (path o) %% more_args %
+    js_of_ocaml Cmd.(atom "-o" %% (path o) %% more_args %
                      "--toplevel" % "--no-runtime" %
                      "--export" %% unstamp (path mod_names) %
                      "+runtime.js" % "+toplevel.js" % "+dynlink.js" %%
@@ -29,7 +29,7 @@ module Js_of_ocaml = struct
   let link ?args:(more_args = Cmd.empty) m ~jss ~o =
     let jsoo_link = Memo.tool m link_tool in
     Memo.spawn m ~reads:jss ~writes:[o] @@
-    jsoo_link Cmd.(arg "-o" %% (path o) %% more_args %% paths jss)
+    jsoo_link Cmd.(atom "-o" %% (path o) %% more_args %% paths jss)
 
   let js_escape =
     let char_len = function '\\' | '"' | '\n' | '\r' -> 2 | _ -> 1 in

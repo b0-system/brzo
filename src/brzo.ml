@@ -28,10 +28,10 @@ module Memo = struct
     let write_build_log m = match log_file with
     | None -> ()
     | Some log_file ->
-        Log.if_error ~use:() (B00_ui.Memo.Log.(write log_file (of_memo m)))
+        Log.if_error ~use:() (B00_cli.Memo.Log.(write log_file (of_memo m)))
     in
     let hook () = write_build_log m in
-    Os.Sig_exit.on_sigint ~hook @@ fun () ->
+    Os.Exit.on_sigint ~hook @@ fun () ->
     let exit, set = Fut.create () in
     B00.Memo.run_proc m
       (fun () -> let* v = fut () in set v; Fut.return ());
@@ -61,26 +61,24 @@ module Memo = struct
     let feedback =
       let op_howto ppf o = Fmt.pf ppf "brzo log --id %d" (B000.Op.id o) in
       let show_op = Log.Info and show_ui = Log.Error and level = Log.level () in
-      B00_ui.Memo.pp_leveled_feedback ~op_howto ~show_op ~show_ui ~level
+      B00_cli.Memo.pp_leveled_feedback ~op_howto ~show_op ~show_ui ~level
         Fmt.stderr
     in
     B00.Memo.memo ~hash_fun ~cwd ~cache_dir ~trash_dir ~jobs ~feedback ()
 end
 
 module Exit = struct
-  type t = Code of int | Exec of Fpath.t * Cmd.t
-  let code = function Code c -> c | _ -> invalid_arg "not an exit code"
-  let conf_error = Code 118
-  let no_build_outcome = Code 120
-  let no_such_sexp_path = Code 1
-  let ok = Code 0
-  let outcome_action_error = Code 122
-  let outcome_build_error = Code 121
-  let some_error = Code 123
-  let undefined_domain = Code 119
+  let conf_error = Os.Exit.Code 118
+  let no_build_outcome = Os.Exit.Code 120
+  let no_such_sexp_path = Os.Exit.Code 1
+  let ok = Os.Exit.Code 0
+  let outcome_action_error = Os.Exit.Code 122
+  let outcome_build_error = Os.Exit.Code 121
+  let some_error = Os.Exit.Code 123
+  let undefined_domain = Os.Exit.Code 119
 
   module Info = struct
-    let e c doc = Cmdliner.Term.exit_info (code c) ~doc
+    let e c doc = Cmdliner.Term.exit_info (Os.Exit.get_code c) ~doc
     let action_exec_exit =
       Cmdliner.Term.exit_info 0 ~max:255
         ~doc:"on outcome action execution, the action exit code"
@@ -292,7 +290,7 @@ module Conf = struct
       ~domain_confs ~hash_fun ~jobs ~log_file ~log_level ~no_pager
       ~outcome_mode ~pdf_viewer ~root ~srcs_i ~srcs_x ~tty_cap ~www_browser ()
     =
-    let trash_dir = Fpath.(b0_dir / B00_ui.Memo.trash_dir_name) in
+    let trash_dir = Fpath.(b0_dir / B00_cli.Memo.trash_dir_name) in
     let srcs = lazy (collect_srcs ~srcs_i ~srcs_x) in
     let memo = lazy (Memo.create ~hash_fun ~cwd ~cache_dir ~trash_dir ~jobs) in
     { action_args; background; b0_dir; brzo_file; cache_dir; cwd; domain_name;
@@ -533,7 +531,7 @@ module Conf_setup = struct
   let common_keys = [domain_key; outcome_mode_key; srcs_i_key; srcs_x_key]
 
   let get_log_file ~cwd ~b0_dir ~log_file = match log_file with
-  | None -> Fpath.(b0_dir / Conf.brzo_dir_name / B00_ui.Memo.log_file_name)
+  | None -> Fpath.(b0_dir / Conf.brzo_dir_name / B00_cli.Memo.log_file_name)
   | Some p -> Fpath.(cwd // p)
 
   let with_cli
@@ -542,9 +540,9 @@ module Conf_setup = struct
       ~outcome_name ~outcome_mode ~pdf_viewer ~root ~srcs_i ~srcs_x ~tty_cap
       ~www_browser ~all_domains ~domain ()
     =
-    let tty_cap = B00_std_ui.get_tty_cap tty_cap in
-    let log_level = B00_std_ui.get_log_level log_level in
-    B00_std_ui.setup tty_cap log_level ~log_spawns:Log.Debug;
+    let tty_cap = B00_cli.B00_std.get_tty_cap tty_cap in
+    let log_level = B00_cli.B00_std.get_log_level log_level in
+    B00_cli.B00_std.setup tty_cap log_level ~log_spawns:Log.Debug;
     let set_cwd = match cwd with None -> Ok () | Some c -> Os.Dir.set_cwd c in
     Result.bind set_cwd @@ fun () ->
     Result.bind (Os.Dir.cwd ()) @@ fun cwd ->
@@ -559,11 +557,11 @@ module Conf_setup = struct
     Result.bind (get_outcome_mode ~outcome_mode sexp) @@ fun outcome_mode ->
     Result.bind (get_srcs_ix ~root ~srcs_i ~srcs_x sexp) @@
     fun (srcs_i, srcs_x) ->
-    let b0_dir = B00_ui.Memo.get_b0_dir ~cwd ~root ~b0_dir in
-    let cache_dir = B00_ui.Memo.get_cache_dir ~cwd ~b0_dir ~cache_dir in
+    let b0_dir = B00_cli.Memo.get_b0_dir ~cwd ~root ~b0_dir in
+    let cache_dir = B00_cli.Memo.get_cache_dir ~cwd ~b0_dir ~cache_dir in
     let log_file = get_log_file ~cwd ~b0_dir ~log_file in
-    let hash_fun = B00_ui.Memo.get_hash_fun ~hash_fun in
-    let jobs = B00_ui.Memo.get_jobs ~jobs in
+    let hash_fun = B00_cli.Memo.get_hash_fun ~hash_fun in
+    let jobs = B00_cli.Memo.get_jobs ~jobs in
     Ok (Conf.v ~action_args ~background ~b0_dir ~brzo_file ~cache_dir ~cwd
           ~domain_name ~domain_confs ~hash_fun ~jobs ~log_file ~log_level
           ~no_pager ~outcome_mode ~pdf_viewer ~root ~srcs_i ~srcs_x ~tty_cap
@@ -585,7 +583,7 @@ module Cli = struct
 
   (* General configuration cli arguments *)
 
-  let fpath = B00_std_ui.fpath
+  let fpath = B00_cli.fpath
   let docs = Manpage.s_common_options
 
   let action_args =
@@ -595,7 +593,7 @@ module Cli = struct
     in
     Arg.(value & pos_all string [] & info [] ~doc ~docv:"ARG")
 
-  let b0_dir = B00_ui.Memo.b0_dir ()
+  let b0_dir = B00_cli.Memo.b0_dir ()
 
   let brzo_file =
     let doc =
@@ -613,7 +611,7 @@ module Cli = struct
 
   let background = B00_www_browser.background ~docs ()
   let www_browser = B00_www_browser.browser ~docs ()
-  let cache_dir = B00_ui.Memo.cache_dir ()
+  let cache_dir = B00_cli.Memo.cache_dir ()
   let cwd =
     let doc =
       "Set the current working directory to $(docv) before doing anything. \
@@ -649,16 +647,16 @@ module Cli = struct
          info ["root"] ~env ~doc ~docv ~docs)
 
   let hash_fun =
-    B00_ui.Memo.hash_fun ~docs ~env:(Arg.env_var "BRZO_HASH_FUN") ()
+    B00_cli.Memo.hash_fun ~docs ~env:(Arg.env_var "BRZO_HASH_FUN") ()
 
-  let jobs = B00_ui.Memo.jobs ~docs ~env:(Arg.env_var "BRZO_JOBS") ()
+  let jobs = B00_cli.Memo.jobs ~docs ~env:(Arg.env_var "BRZO_JOBS") ()
   let log_file =
     let env = Arg.env_var "BRZO_LOG_FILE" in
     let doc_none = "$(b,.log) in $(b,brzo) directory of b0 directory" in
-    B00_ui.Memo.log_file ~docs ~doc_none ~env ()
+    B00_cli.Memo.log_file ~docs ~doc_none ~env ()
 
   let log_level =
-    B00_std_ui.log_level ~docs ~env:(Arg.env_var "BRZO_VERBOSITY") ()
+    B00_cli.B00_std.log_level ~docs ~env:(Arg.env_var "BRZO_VERBOSITY") ()
 
   let no_pager = B00_pager.don't ~docs ()
   let pdf_viewer = B00_pdf_viewer.pdf_viewer ~docs ()
@@ -685,7 +683,7 @@ module Cli = struct
     let docv = "PATH" in
     Arg.(value & opt_all fpath [] & info ["x"; "srcs-x"] ~doc ~docv ~docs)
 
-  let tty_cap = B00_std_ui.tty_cap ~docs ~env:(Arg.env_var "BRZO_COLOR") ()
+  let tty_cap = B00_cli.B00_std.tty_cap ~docs ~env:(Arg.env_var "BRZO_COLOR") ()
 
   (* Domain specific cli *)
 

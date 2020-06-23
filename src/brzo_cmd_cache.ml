@@ -10,24 +10,24 @@ let find_used_keys c =
   | false -> Ok (String.Set.empty)
   | true ->
       Result.map_error (Fmt.str "Cannot determine used keys: %s") @@
-      Result.bind (B00_ui.Memo.Log.read (Brzo.Conf.log_file c)) @@ fun l ->
-      Ok (B00_ui.File_cache.keys_of_done_ops (B00_ui.Memo.Log.ops l))
+      Result.bind (B00_cli.Memo.Log.read (Brzo.Conf.log_file c)) @@ fun l ->
+      Ok (B00_cli.File_cache.keys_of_done_ops (B00_cli.Memo.Log.ops l))
 
 let get_used_keys c = Result.value ~default:String.Set.empty (find_used_keys c)
 
 let cache c (max_byte_size, pct) (action, keys) =
   let dir = Brzo.Conf.cache_dir c in
   let action = match action with
-  | `Delete -> B00_ui.File_cache.delete dir keys
+  | `Delete -> B00_cli.File_cache.delete dir keys
   | `Gc ->
       Result.bind (find_used_keys c) @@ fun used ->
-      B00_ui.File_cache.gc ~dir ~used
-  | `Keys -> B00_ui.File_cache.keys dir
+      B00_cli.File_cache.gc ~dir ~used
+  | `Keys -> B00_cli.File_cache.keys dir
   | `Path -> Log.app (fun m -> m "%a" Fpath.pp_unquoted dir); Ok true
-  | `Stats -> B00_ui.File_cache.stats ~dir ~used:(get_used_keys c)
+  | `Stats -> B00_cli.File_cache.stats ~dir ~used:(get_used_keys c)
   | `Trim ->
       let used = get_used_keys c in
-      B00_ui.File_cache.trim ~dir ~used ~max_byte_size ~pct
+      B00_cli.File_cache.trim ~dir ~used ~max_byte_size ~pct
   in
   Log.if_error ~use:Brzo.Exit.some_error @@
   Result.bind action @@ fun _ -> Ok Brzo.Exit.ok
@@ -70,7 +70,7 @@ let action =
   Arg.(required & pos 0 (some action) None & info [] ~doc ~docv:"ACTION")
 
 let parse_cli =
-  let keys = B00_ui.File_cache.keys_none_is_all ~pos_right:1 () in
+  let keys = B00_cli.File_cache.keys_none_is_all ~pos_right:1 () in
   let parse_cli action keys =
     let has_keys = match keys with `Keys _ -> true | _ -> false in
     match has_keys && action <> `Delete with
@@ -83,7 +83,7 @@ let parse_cli =
 
 let cmd =
   Term.(const cache $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $
-        B00_ui.File_cache.trim_cli () $ parse_cli),
+        B00_cli.File_cache.trim_cli () $ parse_cli),
   Term.info "cache" ~doc ~sdocs ~exits ~man ~man_xrefs
 
 (*---------------------------------------------------------------------------

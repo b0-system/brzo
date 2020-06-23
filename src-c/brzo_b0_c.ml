@@ -61,7 +61,7 @@ module Inc_deps = struct
     let gcc = Memo.tool m Tool.gcc in
     let reads = src :: deps and writes = [o] in
     Memo.spawn m ~reads ~writes @@
-    gcc Cmd.(arg "-M" % "-MF" %% path o %% path src)
+    gcc Cmd.(atom "-M" % "-MF" %% path o %% path src)
 
   let read m ~src file =
     let* s = Memo.read m file in

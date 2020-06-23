@@ -5,7 +5,7 @@
 
 (** Brzo's [delete] command. *)
 
-val cmd : Brzo.Exit.t Cmdliner.Term.t * Cmdliner.Term.info
+val cmd : B00_std.Os.Exit.t Cmdliner.Term.t * Cmdliner.Term.info
 (** [cmd] is the command line for [delete]. *)
 
 (*---------------------------------------------------------------------------

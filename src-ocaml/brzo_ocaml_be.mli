@@ -24,7 +24,7 @@ val resolve_intf_deps :
     and interface. *)
 
 val resolve_impl_deps :
-  Mod_resolver.t -> code:Compile.code -> local_mods:Mod.Src.t Mod.Name.Map.t ->
+  Mod_resolver.t -> code:Conf.code -> local_mods:Mod.Src.t Mod.Name.Map.t ->
   in_dir:Fpath.t -> Mod.Name.Set.t ->
   (Fpath.t list * Fpath.t list * Mod.Name.Set.t * ambs) Fut.t
 (** [resolve_comp_deps r ~code ~local_mods ~in_dir deps] resolve

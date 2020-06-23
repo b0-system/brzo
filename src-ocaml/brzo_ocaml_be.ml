@@ -99,8 +99,8 @@ let resolve_impl_deps r ~code ~local_mods ~in_dir deps =
     in
     loop r deps Mod.Ref.Set.empty reads
   in
-  let local_mods, deps = Mod.Src.find_local_deps local_mods deps in
-  let add_mod acc m = Mod.Src.as_impl_dep_files ~init:acc ~code ~in_dir m in
+  let local_mods, deps = Mod.Src.find deps local_mods in
+  let add_mod acc m = Mod.Src.as_impl_dep_files ~init:acc ~code m in
   let local_objs = List.fold_left add_mod [] local_mods in
   let* deps, mod_refs = prune_cmis_mod_names r deps local_objs in
   let* ext_objs, deps, ambs = resolve_external_impl_deps r ~code deps mod_refs
@@ -186,8 +186,8 @@ let get_miss_deps_help r opam_pkgs miss_deps =
         | [] ->
             if not root_in_resolver
             then `Suggest (dep, String.suggest all_deps root) else
-            let is_prefix f = String.is_prefix root f in
-            `Suggest (dep, List.filter is_prefix all_deps)
+            let starts_with f = String.starts_with root f in
+            `Suggest (dep, List.filter starts_with all_deps)
         | suggest -> `Suggest (dep, suggest)
   in
   let resolver_deps = Mod_resolver.dep_dirs_deps r in

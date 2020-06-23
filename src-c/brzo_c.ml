@@ -47,7 +47,7 @@ module Conf = struct
       ~absent:None
       ~conf:Sexpq.(some (atomic Brzo.Sexp.fpath))
       ~arg:
-        Cmdliner.Arg.(opt (some ~none:"generated" (some B00_std_ui.fpath)) None)
+        Cmdliner.Arg.(opt (some ~none:"generated" (some B00_cli.fpath)) None)
 
   let use_dot_key = "use-dot"
   let use_dot_c =
@@ -94,7 +94,7 @@ let builder m c dc ~build_dir ~srcs =
   let src_root = Brzo.Conf.root c in
   Fut.return { m; c; dc; src_root; srcs; build_dir }
 
-let default_flags = Cmd.(arg "-g" % "-Wall")
+let default_flags = Cmd.(atom "-g" % "-Wall")
 
 let compile_src b ~in_dir ~obj_ext ~deps cname c =
   let d = Fpath.(in_dir / Fmt.str "%s%s" cname ".d") in

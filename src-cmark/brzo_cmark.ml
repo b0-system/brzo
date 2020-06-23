@@ -34,14 +34,15 @@ let md_to_html m ~src_root ~build_dir ~html_dir ~js_files ~css_files md =
   let styles = uris_rel ~to_dir ~files:css_files in
   let o_frag = Fpath.(reroot ~root:src_root ~dst:build_dir md -+ ".htmlf") in
   let o = Fpath.(reroot ~root:src_root ~dst:html_dir md -+ ".html") in
+  let opts = Cmd.empty in
   Memo.file_ready m md;
-  B00_cmark.to_html m ~mds:[md] ~generator ~scripts ~styles ~o_frag ~o
+  B00_cmark.to_html m ~opts ~mds:[md] ~generator ~scripts ~styles ~o_frag ~o
 
 let build_web m c _ ~build_dir ~artefact ~srcs =
   let src_root = Brzo.Conf.root c and html_dir = artefact in
   let mds = B00_fexts.(find_files cmark) srcs in
   let files_to_copy = B00_fexts.(find_files www) srcs in
-  let js_files = B00_fexts.(find_files javascript) srcs in
+  let js_files = B00_fexts.(find_files js) srcs in
   let css_files = B00_fexts.(find_files css) srcs in
   let md_to_html =
     md_to_html m ~src_root ~build_dir ~html_dir ~js_files ~css_files

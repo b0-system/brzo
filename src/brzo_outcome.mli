@@ -33,7 +33,7 @@ type 'a build =
 
 type 'a action =
   B00.Memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t -> artefact:Fpath.t ->
-  (unit -> (Brzo.Exit.t, string) result) Fut.t
+  (unit -> (Os.Exit.t, string) result) Fut.t
 (** The type for outcome action. [action m c dc ~artefact] returns the
     action on [artefact] (already tested for existence and constructed
     by the outcome's {!artefact} function). When the function is

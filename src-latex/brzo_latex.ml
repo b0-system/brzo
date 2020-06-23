@@ -31,9 +31,9 @@ module Conf = struct
   let curl_c =
     Brzo.Conf.Bit.with_cli_arg curl_key
       ~doc:"Use $(docv) to curl" ~docv:"CMD" ~docs
-      ~absent:(Cmd.arg "curl")
-      ~conf:Sexpq.(map Cmd.args (list atom))
-      ~arg:Cmdliner.Arg.(opt (some ~none:"curl" B00_std_ui.cmd) None)
+      ~absent:(Cmd.atom "curl")
+      ~conf:Sexpq.(map Cmd.list (list atom))
+      ~arg:Cmdliner.Arg.(opt (some ~none:"curl" B00_cli.cmd) None)
 
   let doi_resolver_key = "doi-resolver"
   let doi_resolver_c =
@@ -52,7 +52,7 @@ module Conf = struct
       ~absent:None
       ~conf:Sexpq.(some (atomic Brzo.Sexp.fpath))
       ~arg:Cmdliner.Arg.(opt (some ~none:"guessed"
-                                (some B00_std_ui.fpath)) None)
+                                (some B00_cli.fpath)) None)
 
   let get_conf curl doi_resolver main sexp =
     Result.bind (Brzo.Conf.Bit.get curl_c curl sexp) @@ fun curl ->
@@ -155,7 +155,7 @@ let exec_build m c dc ~build_dir ~artefact ~srcs =
   List.iter (Memo.file_ready m) texs;
   List.iter (Memo.file_ready m) bibs;
   let cli =
-    Cmd.(arg "-file-line-error" % "-halt-on-error" %
+    Cmd.(atom "-file-line-error" % "-halt-on-error" %
          "-interaction=nonstopmode" %
          "-output-directory" %% path build_dir %
          "-jobname" % Fpath.basename ~no_ext:true artefact %%
@@ -165,7 +165,7 @@ let exec_build m c dc ~build_dir ~artefact ~srcs =
     List.(rev_append (rev_append bibs doibibs) (rev_append texs stys))
   in
   (* FIXME fixpoint *)
-  let k _ = Os.Cmd.run Cmd.(arg "xelatex" %% cli) |> Result.get_ok in
+  let k _ = Os.Cmd.run Cmd.(atom "xelatex" %% cli) |> Result.get_ok in
   Memo.spawn m ~k ~reads ~writes:[] @@
   xelatex cli;
   Fut.return ()
@@ -303,7 +303,7 @@ let latex_src_chapter = format_of_string
 let langs =
   [ B00_fexts.c_lang, "language=C";
     B00_fexts.css, "language=CSS";
-    B00_fexts.javascript, "language=JavaScript";
+    B00_fexts.js, "language=JavaScript";
     B00_fexts.(ocaml_lang - ext ".mld"), "style=ocaml"; ]
 
 let supported_srcs =
@@ -362,12 +362,12 @@ let listing_build m c _ ~build_dir ~artefact ~srcs =
   let out = Fpath.(artefact -+ ".out") in
   List.iter (Memo.file_ready m) srcs;
   write_listing m ~src_root srcs ~o:doc_file;
-  let cli = Cmd.(arg "-file-line-error" % "-halt-on-error" %
+  let cli = Cmd.(atom "-file-line-error" % "-halt-on-error" %
                  "-interaction=nonstopmode" %
                  "-output-directory" %% path build_dir %% path doc_file)
   in
   (* FIXME fixpoint *)
-  let k _ = Os.Cmd.run Cmd.(arg "xelatex" %% cli) |> Result.get_ok in
+  let k _ = Os.Cmd.run Cmd.(atom "xelatex" %% cli) |> Result.get_ok in
   Memo.spawn m ~reads:(doc_file :: srcs) ~writes:[artefact; aux; toc; out] ~k
   @@ xelatex cli;
   Fut.return ()

@@ -29,7 +29,7 @@ val fingerprint : t -> B00_fexts.t
 val pre_domain : t -> Brzo.Pre_domain.t
 (** [pre_domain d] is the pre-domain of [d]. *)
 
-val run : Brzo.Conf.t -> t -> Brzo.Exit.t
+val run : Brzo.Conf.t -> t -> Os.Exit.t
 (** [run c d] runs domain [d] with configuration [c]. *)
 
 (** {1:find Finding domains} *)

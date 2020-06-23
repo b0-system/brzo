@@ -62,16 +62,11 @@ let brzo =
   fst Brzo_cmd_default.cmd,
   Term.info "brzo" ~version:"%%VERSION%%" ~doc ~sdocs ~exits ~man
 
-let run_main f = Log.time (fun _ m -> m "total time brzo %%VERSION%%") f
-let exit_main = function
-| Brzo.Exit.Code c -> exit c
-| Brzo.Exit.Exec (exec, cmd) ->
-    exit @@ Log.if_error ~use:Brzo.Exit.(code some_error) @@
-    Result.bind (Os.Cmd.execv exec cmd) @@ fun _ -> assert false
-
-let main () = match run_main @@ fun () -> Term.eval_choice brzo cmds with
-| `Ok res -> exit_main res
-| e -> Term.exit ~term_err:Brzo.Exit.(code conf_error) e
+let main () =
+  B00_cli.Exit.exit ~exec_error:Brzo.Exit.some_error @@
+  Log.time (fun _ m -> m "total time brzo %%VERSION%%") @@ fun () ->
+  B00_cli.Exit.of_eval_result ~term_error:Brzo.Exit.conf_error @@
+  Term.eval_choice brzo cmds
 
 let () = if !Sys.interactive then () else main ()
 

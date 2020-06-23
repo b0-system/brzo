@@ -8,7 +8,7 @@ open B00_std.Fut.Syntax
 open B00
 
 let tool = Tool.by_name ~vars:["PATH"] "opam"
-let opam_bin = Cmd.arg "opam"
+let opam_bin = Cmd.atom "opam"
 
 (* FIXME memo is used here but only for future proofing but we should
    really use it. Also we need an easy no caching option spawns in Memo. *)
@@ -22,21 +22,21 @@ let if_exists m f =
   Fut.map Option.some (f ())
 
 let run m ?switch:s cmd oargs =
-  let opam = Os.Cmd.must_find opam_bin |> Memo.fail_if_error m in
-  let s = match s with None -> Cmd.empty | Some s -> Cmd.(arg "--switch" % s) in
+  let opam = Os.Cmd.get opam_bin |> Memo.fail_if_error m in
+  let s = match s with None -> Cmd.empty | Some s -> Cmd.(atom "--switch" % s) in
   Fut.return
     (Os.Cmd.run_out ~trim:true Cmd.(opam % cmd %% s %% oargs))
 
 let lib_dir m ?switch () =
-  let* r = run m ?switch "var" Cmd.(arg "lib") in
+  let* r = run m ?switch "var" Cmd.(atom "lib") in
   let lib_dir = Result.bind r Fpath.of_string in
   let lib_dir = Memo.fail_if_error m lib_dir in
   Fut.return lib_dir
 
 let list m ?switch which () =
   let which = match which with
-  | `Available -> Cmd.arg "--available"
-  | `Installed -> Cmd.arg "--installed"
+  | `Available -> Cmd.atom "--available"
+  | `Installed -> Cmd.atom "--installed"
   in
   let* r = run m ?switch "list" Cmd.(which % "--short") in
   let list = Result.bind r @@ fun s -> Ok (B00_lines.of_string (String.trim s))
@@ -56,8 +56,8 @@ let pkg_list ?switch:s () =
       in
       pkg :: acc
   in
-  Result.bind (Os.Cmd.must_find opam_bin) @@ fun opam ->
-  let s = match s with None -> Cmd.empty | Some s -> Cmd.(arg "--switch" % s) in
+  Result.bind (Os.Cmd.get opam_bin) @@ fun opam ->
+  let s = match s with None -> Cmd.empty | Some s -> Cmd.(atom "--switch" % s) in
   let list =
     Cmd.(opam % "list" %% s % "--columns=name,installed-version"  %
          "--short" % "--normalise" % "--all")

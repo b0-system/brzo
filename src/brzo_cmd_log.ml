@@ -11,8 +11,8 @@ let log c format details op_selector =
   let log_file = Brzo.Conf.log_file c in
   Result.bind (B00_pager.find ~don't ()) @@ fun pager ->
   Result.bind (B00_pager.page_stdout pager) @@ fun () ->
-  Result.bind (B00_ui.Memo.Log.read log_file) @@ fun l ->
-  B00_ui.Memo.Log.out Fmt.stdout format details op_selector ~path:log_file l;
+  Result.bind (B00_cli.Memo.Log.read log_file) @@ fun l ->
+  B00_cli.Memo.Log.out Fmt.stdout format details op_selector ~path:log_file l;
   Ok Brzo.Exit.ok
 
 (* Command line interface *)
@@ -35,14 +35,14 @@ let man = [
   `S docs_details;
   `P "If applicable.";
   `S docs_select;
-  `Blocks B00_ui.Op.query_man;
+  `Blocks B00_cli.Op.query_man;
   Brzo.Cli.man_see_manual; ]
 
 let cmd =
   Term.(const log $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $
-        B00_ui.Memo.Log.out_format_cli ~docs:docs_format () $
-        B00_ui.Cli.out_details ~docs:docs_details () $
-        B00_ui.Op.query_cli ~docs:docs_select ()),
+        B00_cli.Memo.Log.out_format_cli ~docs:docs_format () $
+        B00_cli.Arg.output_details ~docs:docs_details () $
+        B00_cli.Op.query_cli ~docs:docs_select ()),
   Term.info "log" ~doc ~sdocs ~exits ~envs ~man ~man_xrefs
 
 (*---------------------------------------------------------------------------

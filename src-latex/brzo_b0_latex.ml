@@ -17,7 +17,7 @@ module Compile = struct
     let pdf = Fpath.(dir / Fmt.str "%s.pdf" oname) in
     let fls = Fpath.(dir / Fmt.str "%s.fls" oname) in
     Memo.spawn m ~reads:[tex] ~writes:[pdf; fls] @@
-    xelatex Cmd.(arg "-file-line-error" % "-halt-on-error" %
+    xelatex Cmd.(atom "-file-line-error" % "-halt-on-error" %
                  "-interaction=errorstopmode" %
                  "-output-directory" %% path dir %% more_args %
                  Fmt.str "-jobname=%s" oname %% path tex)

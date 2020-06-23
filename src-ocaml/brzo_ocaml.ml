@@ -19,7 +19,6 @@ open Brzo_b0_js_of_ocaml
 
 module Conf = Brzo_ocaml_conf
 
-
 (* Domain definition *)
 
 let name = "ocaml"
@@ -30,7 +29,7 @@ let fingerprint = B00_fexts.ocaml_lang
 
 let default_dep_dirs m ocaml_conf =
   let* lib_dir = Brzo_b0_opam.(if_exists m (lib_dir m)) in
-  let stdlib_dir = Tool.Conf.where ocaml_conf in
+  let stdlib_dir = B00_ocaml.Conf.where ocaml_conf in
   let dep_dirs = stdlib_dir :: Option.to_list lib_dir in
   Fut.return dep_dirs
 
@@ -55,8 +54,10 @@ let ocaml_conf m dc ~build_dir =
   | _ -> Tool.ocamlc
   in
   let o = Fpath.(build_dir / "ocaml.conf") in
-  Tool.Conf.write m ~comp ~o;
-  Tool.Conf.read m o
+  B00_ocaml.Conf.write m ~comp ~o;
+  B00_ocaml.Conf.read m o
+
+let comp_of_code = function `Native -> Tool.ocamlopt | `Byte -> Tool.ocamlc
 
 (* Builder *)
 
@@ -64,7 +65,7 @@ type builder =
   { m : Memo.t;
     c : Brzo.Conf.t;
     dc : Brzo_ocaml_conf.t;
-    ocaml_conf : Tool.Conf.t;
+    ocaml_conf : B00_ocaml.Conf.t;
     src_root : Fpath.t;
     srcs : B00_fexts.map;
     build_dir : Fpath.t;
@@ -113,20 +114,19 @@ let mention_unresolved_on_fail deps o =
       let err = Fmt.str "@[<v>@,%a@]@." (Fmt.list (pp_try_install pkgs)) deps in
       B000.Op.set_status o (B000.Op.Failed (B000.Op.Exec (Some err)))
 
-let compile_c_srcs b ~in_dir =
+let compile_c_srcs b ~comp ~opts ~in_dir =
   (* XXX Maybe better things could be done here once we have a good C
      domain. *)
-  let obj_ext = Tool.Conf.obj_ext b.ocaml_conf in
+  let obj_ext = B00_ocaml.Conf.obj_ext b.ocaml_conf in
   let rec loop os cunits hs = function
   | [] -> List.rev os
   | c :: cs ->
-      let opts = Cmd.arg "-g" in
       let cname = Fpath.basename ~no_ext:true c in
       match String.Map.find cname cunits with
       | exception Not_found ->
           let o = Fpath.(in_dir / Fmt.str "%s%s" cname obj_ext) in
           Memo.file_ready b.m c;
-          Compile.c_to_o b.m opts ~reads:hs ~c ~o;
+          Compile.c_to_o b.m ~comp ~opts ~reads:hs ~c ~o;
           loop (o :: os) (String.Map.add cname c cunits) hs cs
       | f ->
           Memo.notify b.m `Warn
@@ -140,64 +140,68 @@ let compile_c_srcs b ~in_dir =
   List.iter (Memo.file_ready b.m) hs;
   Fut.return (loop [] String.Map.empty hs cs)
 
-let compile_intf b ~in_dir ~local_mods msrc = match Mod.Src.mli msrc with
-| None -> None
-| Some mli ->
-    let o = Mod.Src.cmi_file ~in_dir msrc in
-    begin
-      ignore @@
-      let deps = Mod.Src.mli_deps msrc in
-      let* local_objs, ext_objs, unresolved, ambs =
-        Brzo_ocaml_be.resolve_intf_deps b.r ~in_dir ~local_mods deps
-      in
-      record_ext_incs b ext_objs;
-      let* () = Brzo_ocaml_be.handle_amb_deps b.r mli ~unresolved ambs in
-      let reads = List.rev_append local_objs ext_objs in
-      let post_exec = mention_unresolved_on_fail unresolved in
-      let opts = Cmd.arg "-g" in
-      Compile.mli_to_cmi b.m ~post_exec opts ~reads ~mli ~o ~and_cmti:true;
-      Fut.return ()
-    end;
-    Some o
+let compile_intf b ~comp ~opts ~build_dir ~local_mods msrc =
+  match Mod.Src.mli msrc with
+  | None -> None
+  | Some mli ->
+      let o = Mod.Src.cmi_file msrc in
+      begin
+        ignore @@
+        let deps = Mod.Src.mli_deps msrc in
+        let* local_objs, ext_objs, unresolved, ambs =
+          Brzo_ocaml_be.resolve_intf_deps b.r ~in_dir:build_dir ~local_mods deps
+        in
+        record_ext_incs b ext_objs;
+        let* () = Brzo_ocaml_be.handle_amb_deps b.r mli ~unresolved ambs in
+        let reads = List.rev_append local_objs ext_objs in
+        let post_exec = mention_unresolved_on_fail unresolved in
+        Compile.mli_to_cmi
+          b.m ~post_exec ~comp ~opts ~reads ~mli ~o ~and_cmti:true;
+        Fut.return ()
+      end;
+      Some o
 
-let compile_impl b ~code ~in_dir ~local_mods msrc = match Mod.Src.ml msrc with
-| None -> None
-| Some ml ->
-    let o = Mod.Src.impl_file ~code ~in_dir msrc in
-    begin
-      ignore @@
-      let deps = Mod.Src.ml_deps msrc in
-      let* local_objs, ext_objs, unresolved, ambs =
-        Brzo_ocaml_be.resolve_impl_deps b.r ~code ~in_dir ~local_mods deps
-      in
-      record_ext_incs b ext_objs;
-      let* () = Brzo_ocaml_be.handle_amb_deps b.r ml ~unresolved ambs in
-      let has_cmi, local_objs = match Mod.Src.mli msrc with
-      | None -> false, local_objs
-      | Some _ -> true, Mod.Src.cmi_file ~in_dir msrc :: local_objs
-      in
-      let reads = List.rev_append ext_objs local_objs in
-      let post_exec = mention_unresolved_on_fail unresolved in
-      let opts = Cmd.arg "-g" in
-      Compile.ml_to_impl b.m ~post_exec ~code opts ~has_cmi ~reads ~ml ~o
-        ~and_cmt:true;
-      Fut.return ()
-    end;
-    Some o
+let compile_impl b ~code ~opts ~build_dir ~local_mods msrc =
+  match Mod.Src.ml msrc with
+  | None -> None
+  | Some ml ->
+      let o = Option.get (Mod.Src.impl_file ~code msrc) in
+      begin
+        ignore @@
+        let deps = Mod.Src.ml_deps msrc in
+        let* local_objs, ext_objs, unresolved, ambs =
+          Brzo_ocaml_be.resolve_impl_deps b.r ~code ~in_dir:build_dir
+            ~local_mods deps
+        in
+        record_ext_incs b ext_objs;
+        let* () = Brzo_ocaml_be.handle_amb_deps b.r ml ~unresolved ambs in
+        let has_cmi, local_objs = match Mod.Src.mli msrc with
+        | None -> false, local_objs
+        | Some _ -> true, Mod.Src.cmi_file msrc :: local_objs
+        in
+        let reads = List.rev_append ext_objs local_objs in
+        let post_exec = mention_unresolved_on_fail unresolved in
+        Compile.ml_to_impl b.m ~post_exec ~code ~opts ~has_cmi ~reads ~ml ~o
+          ~and_cmt:true;
+        Fut.return ()
+      end;
+      Some o
 
-let compile_intfs b ~in_dir ~local_mods =
-  let compile _ msrc acc = match compile_intf b ~local_mods ~in_dir msrc with
-  | None -> acc | Some cmi -> cmi :: acc
+let compile_intfs b ~comp ~opts ~build_dir ~local_mods =
+let compile _ msrc acc =
+    match compile_intf b ~comp ~opts ~local_mods ~build_dir msrc with
+    | None -> acc | Some cmi -> cmi :: acc
   in
   String.Map.fold compile local_mods []
 
-let compile_impls b ~code ~in_dir ~local_mods =
-  let compile _ m acc = match compile_impl b ~code ~local_mods ~in_dir m with
-  | None -> acc | Some o -> o :: acc
+let compile_impls b ~code ~opts ~build_dir ~local_mods =
+  let compile _ m acc =
+    match compile_impl b ~code ~opts ~local_mods ~build_dir m with
+    | None -> acc | Some o -> o :: acc
   in
   String.Map.fold compile local_mods []
 
-let local_mods ?(more_srcs = []) ~mli_only b =
+let local_mods ?(more_srcs = []) ~opts ~build_dir ~mli_only b =
   let maybe_ml = if mli_only then String.Set.empty else B00_fexts.(ext ".ml") in
   let src_exts = B00_fexts.(ext ".mli" + maybe_ml) in
   let srcs = B00_fexts.find_files src_exts b.srcs in
@@ -206,13 +210,14 @@ let local_mods ?(more_srcs = []) ~mli_only b =
   let srcs = List.rev_append more_srcs srcs in
   Mod.Src.Deps.write b.m ~src_root:b.src_root ~srcs ~o;
   let* src_deps = Mod.Src.Deps.read b.m ~src_root:b.src_root o in
-  Fut.return (Mod.Src.of_srcs b.m ~src_deps ~srcs)
+  Fut.return (Mod.Src.map_of_srcs b.m ~build_dir ~src_deps ~srcs)
 
-let compile_srcs ?more_srcs b ~code ~in_dir =
-  let* c_objs = compile_c_srcs b ~in_dir in
-  let* local_mods = local_mods ?more_srcs ~mli_only:false b in
-  let _cmis = compile_intfs b ~in_dir ~local_mods in
-  let cobjs = compile_impls b ~code ~in_dir ~local_mods in
+let compile_srcs ?more_srcs b ~code ~opts ~build_dir =
+  let comp = comp_of_code code in
+  let* c_objs = compile_c_srcs b ~comp ~opts ~in_dir:build_dir in
+  let* local_mods = local_mods ?more_srcs ~opts  ~build_dir ~mli_only:false b in
+  let _cmis = compile_intfs b ~comp ~build_dir ~opts ~local_mods in
+  let cobjs = compile_impls b ~code ~build_dir ~opts ~local_mods in
   Fut.return (c_objs, cobjs)
 
 let find_link_deps b ~code ~in_dir cobjs =
@@ -244,7 +249,7 @@ let write_merlin_file b =
       Memo.file_ready b.m merlin_file;
       ignore @@
       let* s = Memo.read b.m merlin_file in
-      (if String.is_prefix "# Generated by brzo" s then write b else ());
+      (if String.starts_with "# Generated by brzo" s then write b else ());
       Fut.return ()
 
 (* Exec outcome *)
@@ -254,24 +259,27 @@ let drop_stdlib cobjs =
   let keep o = not (is_stdlib (Fpath.basename ~no_ext:true (Cobj.file o))) in
   List.filter keep cobjs
 
-let build_exe b ~code ~exe =
+let build_exe ?(opts = Cmd.empty) b ~code ~exe =
   let in_dir = b.build_dir in
-  let* c_objs, cobjs = compile_srcs b ~code ~in_dir in
+  let opts = Cmd.(atom "-g" %% opts) in
+  let* c_objs, cobjs = compile_srcs b ~code ~opts ~build_dir:in_dir in
   let* cobjs, ext_cobjs = find_link_deps b ~code ~in_dir cobjs in
   let rev_ext_cobjs = List.rev_map Cobj.file (drop_stdlib ext_cobjs) in
   let cobjs = List.rev_append rev_ext_cobjs (List.map Cobj.file cobjs) in
   write_merlin_file b;
-  Link.code b.m ~code ~c_objs ~cobjs ~o:exe;
+  Link.code b.m ~conf:b.ocaml_conf ~code ~opts ~c_objs ~cobjs ~o:exe;
   Fut.return ()
 
 let js_exe = "a.js"
 let js_tty_glue = "brzo_tty_glue.js"
 
+let no_check_prims = Cmd.(atom "-no-check-prims")
+
 let build_node_exe b ~artefact =
   let src_root = b.src_root in
   let byte_exe = Fpath.(b.build_dir / "a.out") in
   let ocaml_js = Fpath.(b.build_dir / "a.out.js") in
-  let js_files = B00_fexts.(find_files javascript) b.srcs in
+  let js_files = B00_fexts.(find_files js) b.srcs in
   let jss =
     let copy acc src =
       let dst = Fpath.reroot ~root:src_root ~dst:b.build_dir src in
@@ -281,8 +289,8 @@ let build_node_exe b ~artefact =
     in
     List.rev (ocaml_js :: (List.fold_left copy [] js_files))
   in
-  let args = Cmd.(arg "--source-map-inline") in
-  ignore (build_exe b ~code:`Byte ~exe:byte_exe);
+  let args = Cmd.(atom "--source-map-inline") in
+  ignore (build_exe b ~opts:no_check_prims ~code:`Byte ~exe:byte_exe);
   Js_of_ocaml.compile b.m ~byte_exe ~args ~o:ocaml_js;
   Js_of_ocaml.link b.m ~jss ~args ~o:artefact;
   Fut.return ()
@@ -302,7 +310,7 @@ let build_html_web b ~toplevel_css ~js_exe =
       in
       let generator = "brzo %%VERSION%% ocaml" in
       let styles = rel_uris B00_fexts.(find_files css b.srcs) in
-      let scripts = rel_uris B00_fexts.(find_files javascript b.srcs) in
+      let scripts = rel_uris B00_fexts.(find_files js b.srcs) in
       let scripts = scripts @ [js_tty_glue; js_exe] in
       let index = Fpath.(dst_root / "index.html") in
       let title = Fpath.basename src_root in
@@ -311,8 +319,8 @@ let build_html_web b ~toplevel_css ~js_exe =
 
 let build_html_exe b ~artefact =
   let byte_exe = Fpath.(b.build_dir / "a.out") in
-  let args = Cmd.(arg "--source-map-inline" % "--extern-fs") in
-  ignore (build_exe b ~code:`Byte ~exe:byte_exe);
+  let args = Cmd.(atom "--source-map-inline" % "--extern-fs") in
+  ignore (build_exe b ~opts:no_check_prims ~code:`Byte ~exe:byte_exe);
   Js_of_ocaml.compile b.m ~args ~byte_exe ~o:Fpath.(b.build_dir / js_exe);
   build_html_web b ~toplevel_css:false ~js_exe;
   Fut.return ()
@@ -337,9 +345,9 @@ let exec_html_action m c dc ~build_dir ~artefact =
 let exec_node_action m c dc ~build_dir ~artefact =
   Fut.return @@ fun () ->
   let action_args = Brzo.Conf.action_args c in
-  Result.bind (Os.Cmd.must_find_tool (Fpath.v "node")) @@ fun node ->
-  let cmd = Cmd.(path node %% path artefact %% args (action_args)) in
-  Ok (Brzo.Exit.Exec (node, cmd))
+  Result.bind (Os.Cmd.get_tool (Fpath.v "node")) @@ fun node ->
+  let cmd = Cmd.(path node %% path artefact %% list (action_args)) in
+  Ok (Os.Exit.exec node cmd)
 
 let exec_target m dc =
   let t = Brzo_ocaml_conf.target dc in
@@ -363,7 +371,7 @@ let exec_artefact m c dc ~build_dir = match Brzo_ocaml_conf.target dc with
     (* FIXME this will write in build_dir I'm not sure the protocol
        allows that. *)
     let* ocaml_conf = ocaml_conf m dc ~build_dir in
-    let exe_ext = Tool.Conf.exe_ext ocaml_conf in
+    let exe_ext = B00_ocaml.Conf.exe_ext ocaml_conf in
     Fut.return Fpath.(build_dir / Fmt.str "a.out%s" exe_ext)
 | Some `Html -> Fut.return Fpath.(build_dir / "index.html")
 | Some `Node -> Fut.return Fpath.(build_dir / js_exe)
@@ -422,7 +430,7 @@ let write_top_cmd
   =
   let incs = Cmd.paths ~slip:"-I" (build_dir :: incs) in
   let libs = Cmd.paths libs in
-  let cmd = Cmd.(arg top %% al %% incs %% libs %% path archive) in
+  let cmd = Cmd.(atom top %% al %% incs %% libs %% path archive) in
   let cmd = String.concat "\n" (Cmd.to_list cmd) in
   Memo.write m ~stamp:cmd artefact @@ fun () -> Ok cmd
 
@@ -434,8 +442,8 @@ let run_top_cmd m c top_cmd =
   | cmd :: _ as cline ->
       let aargs = Brzo.Conf.action_args c in
       Result.bind (Fpath.of_string cmd) @@ fun cmd ->
-      Result.bind (Os.Cmd.must_find_tool cmd) @@ fun cmd ->
-      Ok (Brzo.Exit.Exec (cmd, Cmd.(args cline %% args aargs)))
+      Result.bind (Os.Cmd.get_tool cmd) @@ fun cmd ->
+      Ok (Os.Exit.exec cmd Cmd.(list cline %% list aargs))
 
 let cobjs_incs objs =
   (* This may not work with library variant depending on how they
@@ -449,25 +457,29 @@ let build_top b ~code ~top ~artefact =
   | `Byte -> Fpath.(in_dir / Fmt.str "%s.cma" oname)
   | `Native -> Fpath.(in_dir / Fmt.str "%s.cmxs" oname)
   in
-  let* c_objs, cobjs = compile_srcs b ~code ~in_dir in
+  let opts = Cmd.atom "-g" in
+  let* c_objs, cobjs = compile_srcs b ~code ~opts ~build_dir:in_dir in
   let has_cstubs = c_objs <> [] in
-  if has_cstubs then Archive.cstubs b.m ~c_objs ~odir:in_dir ~oname;
+  if has_cstubs
+  then Archive.cstubs b.m ~conf:b.ocaml_conf ~opts ~c_objs ~odir:in_dir ~oname;
   let* cobjs, ext_cobjs = find_link_deps b ~in_dir ~code cobjs in
   let cobjs = List.map Cobj.file cobjs and incs = cobjs_incs ext_cobjs in
   write_merlin_file b;
-  Archive.code b.m ~code ~has_cstubs ~cobjs ~odir:in_dir ~oname;
+  Archive.code
+    b.m ~conf:b.ocaml_conf ~code ~opts ~has_cstubs ~cobjs ~odir:in_dir ~oname;
   begin match code with
   | `Byte -> ()
   | `Native ->
       let cmxa = Fpath.(in_dir / Fmt.str "%s.cmxa" oname) in
-      Archive.native_dynlink b.m ~has_cstubs ~cmxa ~o:archive;
+      Archive.native_dynlink
+        b.m ~conf:b.ocaml_conf ~opts ~has_cstubs ~cmxa ~o:archive;
   end;
   let* ext_cobjs = drop_top_libs b.r ~code ~top ext_cobjs in
   let args, libs = match code with
   | `Byte -> Cmd.empty, List.map Cobj.file ext_cobjs
   | `Native ->
       let cmxa_to_cmxs_file o = Fpath.set_ext ".cmxs" (Cobj.file o) in
-      Cmd.(arg "-noinit"), (* most .ocamlinit will fail *)
+      Cmd.(atom "-noinit"), (* most .ocamlinit will fail *)
       List.map cmxa_to_cmxs_file ext_cobjs
   in
   write_top_cmd
@@ -494,16 +506,17 @@ let build_html_top b ~top ~artefact =
   let byte_exe = Fpath.(in_dir / "a.out") in
   let mod_names = Fpath.(in_dir / "top_mod_names") in
   let toplevel_ui_ml = Fpath.(b.build_dir / "brzo_jsoo_toplevel_ui.ml") in
-  let args = Cmd.(arg "--extern-fs") in
+  let args = Cmd.(atom "--extern-fs") in
   let more_srcs = [toplevel_ui_ml] in
   write_toplevel_ui_src b.m ~o:toplevel_ui_ml;
-  let* c_objs, cmos = compile_srcs ~more_srcs b ~code ~in_dir in
+  let opts = Cmd.(atom "-g" %% no_check_prims) in
+  let* c_objs, cmos = compile_srcs ~more_srcs b ~code ~opts ~build_dir:in_dir in
   let* cmos, cmas = find_link_deps b ~code ~in_dir cmos in
   write_mod_names b.m (List.rev_append cmos cmas) ~o:mod_names;
   let rev_cmas = List.rev_map Cobj.file (drop_stdlib cmas) in
   let cmos = List.rev_append rev_cmas (List.map Cobj.file cmos) in
   write_merlin_file b;
-  Link.byte b.m ~c_objs ~cobjs:cmos ~o:byte_exe;
+  Link.byte b.m ~conf:b.ocaml_conf ~opts ~c_objs ~cobjs:cmos ~o:byte_exe;
   Js_of_ocaml.compile_toplevel b.m ~args ~byte_exe ~mod_names
     ~o:Fpath.(b.build_dir / js_exe);
   build_html_web b ~toplevel_css:true ~js_exe;
@@ -703,8 +716,8 @@ let pkg_to_html b theme pkg_name cmis ~html_dir md_htmls =
 let find_theme b =
   let opam_share () =
     (* FIXME B00_opam *)
-    let opam = Cmd.arg "opam" in
-    Result.bind (Os.Cmd.must_find opam) @@ fun opam ->
+    let opam = Cmd.atom "opam" in
+    Result.bind (Os.Cmd.get opam) @@ fun opam ->
     Result.bind (Os.Cmd.run_out ~trim:true
                    Cmd.(opam % "var" % "share")) @@ fun share ->
     Fpath.of_string share
@@ -741,7 +754,7 @@ let md_to_html m ~src_root ~build_dir ~html_dir md =
   let o_frag = Fpath.(reroot ~root:src_root ~dst:build_dir md -+ ".htmlf") in
   let o = Fpath.(reroot ~root:src_root ~dst:html_dir  md -+ ".html") in
   Memo.file_ready m md;
-  B00_cmark.to_html m ~mds:[md] ~generator ~o_frag ~o;
+  B00_cmark.to_html m ~opts:Cmd.empty ~mds:[md] ~generator ~o_frag ~o;
   o
 
 let mds_to_html m c dc ~build_dir ~html_dir ~srcs =
@@ -758,8 +771,10 @@ let build_doc m c dc ~build_dir ~artefact ~srcs =
   let theme = find_theme b and pkg_name = pkg_name c and html_dir = artefact in
   let in_dir = Fpath.(b.build_dir / "cmti") in
   let* () = Memo.mkdir m in_dir in
-  let* local_mods = local_mods b ~mli_only:true in
-  let cmis = compile_intfs b ~local_mods ~in_dir in
+  let opts = Cmd.atom "-g" in
+  let* local_mods = local_mods b ~opts ~build_dir:in_dir ~mli_only:true in
+  let comp = comp_of_code `Native in (* FIXME do something smart *)
+  let cmis = compile_intfs b ~comp ~opts ~local_mods ~build_dir:in_dir in
   write_merlin_file b;
   let* () = Memo.mkdir m html_dir in
   let md_htmls = mds_to_html m c dc ~build_dir ~html_dir ~srcs in

@@ -29,40 +29,31 @@ end
 (** Program exits. *)
 module Exit : sig
 
-  type t =
-  | Code of int
-  | Exec of Fpath.t * Cmd.t (** *)
-  (** The type for exits. Either an exit code or a command to [execv]. *)
-
-  val code : t -> int
-  (** [code c] is the code of [c], raises [Invalid_argument] if [c]
-      is [Exec]. *)
-
-  val conf_error : t
+  val conf_error : Os.Exit.t
   (** [conf_error] indicates a brzo configuration error (e.g. in
       a BRZO file. *)
 
-  val no_build_outcome : t
+  val no_build_outcome : Os.Exit.t
   (** [no_build_outcome] indicates there's no build outcome on operations
       that request one. *)
 
-  val no_such_sexp_path : t
+  val no_such_sexp_path : Os.Exit.t
   (** [no_such_sexp_path] indicates that a specified s-expression path
       does not exist. *)
 
-  val ok : t
+  val ok : Os.Exit.t
   (** [ok] is the zero exit code. *)
 
-  val outcome_build_error : t
+  val outcome_build_error : Os.Exit.t
   (** [outcome_build_error] indicates an outcome build error. *)
 
-  val outcome_action_error : t
+  val outcome_action_error : Os.Exit.t
   (** [outcome_action_error] indicates an outcome action error. *)
 
-  val some_error : t
+  val some_error : Os.Exit.t
   (** [some_error] indicates an indiscrimante error reported on stderr. *)
 
-  val undefined_domain : t
+  val undefined_domain : Os.Exit.t
   (** [undefined_domain] indicates use of an undefined domain in BRZO file. *)
 
   (** Cmdliner documentation. *)
@@ -74,7 +65,6 @@ module Exit : sig
     val outcome_build_error : Cmdliner.Term.exit_info
     val some_error : Cmdliner.Term.exit_info
     val undefined_domain : Cmdliner.Term.exit_info
-
     val base_cmd : Cmdliner.Term.exit_info list
     val domain_cmd : Cmdliner.Term.exit_info list
   end

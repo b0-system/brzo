@@ -19,7 +19,7 @@ type 'a build =
 
 type 'a action =
   B00.Memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t -> artefact:Fpath.t ->
-  (unit -> (Brzo.Exit.t, string) result) Fut.t
+  (unit -> (Os.Exit.t, string) result) Fut.t
 
 (* Outcomes *)
 
@@ -58,8 +58,8 @@ module Action = struct
   let exec m c _ ~build_dir:_ ~artefact =
     Fut.return @@ fun () ->
     let action_args = Brzo.Conf.action_args c in
-    let cmd = Cmd.(path artefact %% args action_args) in
-    Ok (Brzo.Exit.Exec (artefact, cmd))
+    let cmd = Cmd.(path artefact %% list action_args) in
+    Ok (Os.Exit.exec artefact cmd)
 
   let show_pdf m c _ ~build_dir:_ ~artefact =
     Fut.return @@ fun () ->
