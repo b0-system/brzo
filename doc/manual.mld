@@ -101,7 +101,7 @@ the outcome configuration, use the following invocations:
 
 {v
 brzo -b               # only build the outcome artefact
-brzo -a -- 'Quick!'   # only perform the outcome action
+brzo -r -- 'Quick!'   # only run the outcome action (no build)
 brzo --path           # path to the outcome artefact (built or not)
 brzo -d               # delete the outcome build (but not the cache)
 brzo --conf           # show determined configuration

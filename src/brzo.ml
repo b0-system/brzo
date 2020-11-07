@@ -626,11 +626,12 @@ module Cli = struct
     let docs = s_outcome_mode in
     let m symb args doc = (Some symb), Arg.info args ~doc ~docs in
     let modes =
-      [ m `Action ["a"; "action"] "Only perform the outcome action.";
+      [ m `Action ["r"; "run-action"] "Only perform the outcome action.";
         m `Build ["b"; "build"] "Only build the outcome artefact.";
         m `Conf ["conf"] "Only show the configuration.";
         m `Delete ["d"; "delete"] "Delete the outcome build.";
-        m `Normal ["normal"] "Build outcome and perform the action (default).";
+        m `Normal ["a"; "normal"]
+          "Build outcome and perform the action (default).";
         m `Path ["path"] "Only show the path to the outcome artefact." ]
     in
     Arg.(value & vflag None modes)
