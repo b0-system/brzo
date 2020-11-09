@@ -5,6 +5,7 @@
 
 open B00_std
 open B00_serialk_sexp
+open Fut.Syntax
 open Cmdliner
 
 (* Targets *)
@@ -14,8 +15,10 @@ let target_to_string = function
 | `Byte -> "byte" | `Native -> "native" | `Html -> "html" | `Node -> "node"
 
 let default_target ~default_native_if:tool m target = match target with
-| Some c -> c
-| None -> if Option.is_some (B00.Memo.tool_opt m tool) then `Native else `Byte
+| Some c -> Fut.return c
+| None ->
+    let* tool = B00.Memo.tool_opt m tool in
+    Fut.return (if Option.is_some tool then `Native else `Byte)
 
 (* Domain configuration *)
 

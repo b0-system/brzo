@@ -4,7 +4,7 @@
   ---------------------------------------------------------------------------*)
 
 open B00_std
-open B00_std.Fut.Syntax
+open Fut.Syntax
 open B00
 open B00_ocaml
 open Brzo_b0_ocaml
@@ -49,7 +49,8 @@ let resolver m c dc ~memo_dir ocaml_conf =
 let ocaml_conf m dc ~build_dir =
   let default_native_if = Tool.ocamlopt in
   let t = Brzo_ocaml_conf.target dc in
-  let comp = match Brzo_ocaml_conf.default_target ~default_native_if m t with
+  let* target = Brzo_ocaml_conf.default_target ~default_native_if m t in
+  let comp = match target with
   | `Native -> Tool.ocamlopt
   | _ -> Tool.ocamlc
   in
@@ -354,13 +355,14 @@ let exec_target m dc =
   Brzo_ocaml_conf.default_target ~default_native_if:Tool.ocamlopt m t
 
 let exec_build_dir_suff m _ dc  =
-  Fut.return
-    ("-" ^ Brzo_ocaml_conf.target_to_string (exec_target m dc))
+  let* target = exec_target m dc in
+  Fut.return ("-" ^ Brzo_ocaml_conf.target_to_string target)
 
 let exec_build m c dc ~build_dir ~artefact ~srcs =
   let* () = Brzo.Memo.ensure_exec_build m ~srcs ~need_ext:".ml" in
   let* b = builder m c dc ~build_dir ~srcs in
-  match exec_target m dc with
+  let* target = exec_target m dc in
+  match target with
   | `Byte -> build_exe b ~code:`Byte ~exe:artefact
   | `Native -> build_exe b ~code:`Native ~exe:artefact
   | `Html -> build_html_exe b ~artefact
@@ -537,15 +539,16 @@ let top_target m dc =
   Brzo_ocaml_conf.default_target ~default_native_if:Tool.ocamlnat m t
 
 let top_build_dir_suff m _ dc =
-  Fut.return
-    ("-" ^ Brzo_ocaml_conf.target_to_string (top_target m dc))
+  let* target = top_target m dc in
+  Fut.return ("-" ^ Brzo_ocaml_conf.target_to_string target)
 
 let top_build m c dc ~build_dir ~artefact ~srcs =
   (* XXX We assume here that dynlink is available on the platform.
      If it's not we should build a custom toplevel and invoke that
      instead. *)
   let* b = builder m c dc ~build_dir ~srcs in
-  match top_target m dc with
+  let* target = top_target m dc in
+  match target with
   | `Byte -> build_top b ~code:`Byte ~top:"ocaml" ~artefact
   | `Native -> build_top b ~code:`Native ~top:"ocamlnat" ~artefact
   | `Html -> build_html_top b ~top:"jsoo" ~artefact
@@ -758,12 +761,14 @@ let md_to_html m ~src_root ~build_dir ~html_dir md =
   o
 
 let mds_to_html m c dc ~build_dir ~html_dir ~srcs =
-  match Memo.tool_opt m B00_cmark.tool (* fixme conf lookup *) with
-  | None -> []
+  let* cmark = Memo.tool_opt m B00_cmark.tool (* fixme conf lookup *) in
+  match cmark with
+  | None -> Fut.return []
   | Some _ ->
       let mds = B00_fexts.(find_files cmark) srcs in
       let src_root = Brzo.Conf.root c in
       let html_dir = Fpath.(html_dir / "_docs") in
+      Fut.return @@
       List.rev_map (md_to_html m ~src_root ~build_dir ~html_dir) mds
 
 let build_doc m c dc ~build_dir ~artefact ~srcs =
@@ -777,7 +782,7 @@ let build_doc m c dc ~build_dir ~artefact ~srcs =
   let cmis = compile_intfs b ~comp ~opts ~local_mods ~build_dir:in_dir in
   write_merlin_file b;
   let* () = Memo.mkdir m html_dir in
-  let md_htmls = mds_to_html m c dc ~build_dir ~html_dir ~srcs in
+  let* md_htmls = mds_to_html m c dc ~build_dir ~html_dir ~srcs in
   pkg_to_html b theme pkg_name cmis ~html_dir md_htmls;
   let without_theme = match theme with None -> false | Some _ -> true in
   let build_dir = b.build_dir in

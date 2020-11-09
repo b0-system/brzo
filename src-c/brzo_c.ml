@@ -224,10 +224,9 @@ let vcs_version ~root =
   | Some vcs -> B00_vcs.describe vcs ~dirty_mark:true "HEAD"
 
 let write_doxyfile m c dc ~out_dir ~srcs ~o =
-  match find_doxyfile m c dc with
+  ignore @@ match find_doxyfile m c dc with
   | Some doxyfile ->
       Memo.file_ready m doxyfile;
-      ignore @@
       let* doxy =  Memo.read m doxyfile in
       let doxy = override_doxyfile ~out_dir ~srcs doxy in
       (Memo.write m ~reads:[doxyfile] ~stamp:doxy o @@ fun () -> Ok doxy);
@@ -236,22 +235,24 @@ let write_doxyfile m c dc ~out_dir ~srcs ~o =
       let root = Brzo.Conf.root c in
       let project_name = Fpath.basename root in
       let version = vcs_version ~root in
-      let use_dot =
-        if not (Conf.use_dot dc) then false else
-        match Memo.tool_opt m Brzo_b0_doxygen.Tool.dot with
+      let* use_dot =
+        if not (Conf.use_dot dc) then Fut.return false else
+        let* dot = Memo.tool_opt m Brzo_b0_doxygen.Tool.dot in
+        match dot with
+        | Some _ -> Fut.return true
         | None ->
             Memo.notify
               m `Warn "@[<v>Tool %a not found.@,Use option %a or invoke %a@,to \
                        disable this warning.@]"
               Fmt.(code string) "dot" Fmt.(code string) "--use-dot=false"
               Fmt.(code string) "brzo file set c.use-dot false";
-            false
-        | Some _ -> true
+            Fut.return false
       in
       let doxy =
         gen_doxyfile ~project_name ~version ~root ~out_dir ~use_dot ~srcs
       in
-      Memo.write m ~reads:srcs ~stamp:doxy o @@ (fun () -> Ok doxy)
+      Memo.write m ~reads:srcs ~stamp:doxy o (fun () -> Ok doxy);
+      Fut.return ()
 
 let doc_build m c dc ~build_dir ~artefact ~srcs =
   let out_dir = Fpath.(build_dir / "o") in

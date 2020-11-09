@@ -18,7 +18,7 @@ val target_to_string : target -> string
 (** [target_to_string t] is [t] as a string token. *)
 
 val default_target :
-  default_native_if:B00.Tool.t -> B00.Memo.t -> target option -> target
+  default_native_if:B00.Tool.t -> B00.Memo.t -> target option -> target Fut.t
 
 val target : t -> target option
 val ocamlpath : t -> Fpath.t list
