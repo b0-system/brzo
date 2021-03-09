@@ -15,7 +15,7 @@ module Mod_resolver = struct
   let restrictions m index dep_dirs deps =
     let rec add_dep added acc miss dep = function
     | dir :: dirs ->
-        let d = Fpath.(to_dir_path @@ dir // dep) in
+        let d = Fpath.(add_dir_sep @@ dir // dep) in
         if Fpath.Set.mem d (B00_findex.dirs index)
         then add_dep true (d :: acc) miss dep dirs
         else add_dep added acc miss dep dirs
@@ -60,17 +60,17 @@ module Mod_resolver = struct
   let deps r = r.deps
   let index r = r.index
   let dep_of_file r f =
-    let dir_dep f dir = match Fpath.rem_prefix dir f with
-    | None -> None | Some rel -> Some (Fpath.rem_empty_seg @@ Fpath.parent rel)
+    let dir_dep f dir = match Fpath.strip_prefix dir f with
+    | None -> None | Some rel -> Some (Fpath.strip_dir_sep @@ Fpath.parent rel)
     in
     List.find_map (dir_dep f) (dep_dirs r)
 
   let dep_dirs_deps r =
     let find_deps_in_root_dir r root_dir =
       let parent = Fpath.parent root_dir in
-      let rem_parent f = Option.get (Fpath.rem_prefix parent f) in
+      let rem_parent f = Option.get (Fpath.strip_prefix parent f) in
       let rec loop acc = function
-      | [] -> List.rev_map Fpath.rem_empty_seg acc
+      | [] -> List.rev_map Fpath.strip_dir_sep acc
       | d :: ds ->
           let subs = B00_findex.dir_dirs r.index d in
           let deps = List.rev_map rem_parent subs in

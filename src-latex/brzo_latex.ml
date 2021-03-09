@@ -318,7 +318,7 @@ let latex_lang_setup src =
   | (_, setup) -> setup
 
 let src_listing ~src_root ppf src =
-  let file = Option.get (Fpath.rem_prefix src_root src) in
+  let file = Option.get (Fpath.strip_prefix src_root src) in
   Fmt.pf ppf
     latex_src_chapter
     (Latex.escape (Fpath.to_string file))

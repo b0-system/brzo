@@ -244,7 +244,7 @@ module Conf = struct
       | true -> add_file (Fpath.basename i) i acc
       | false ->
           if exclude (Fpath.basename i) i then acc else
-          let i = Fpath.rem_empty_seg i in
+          let i = Fpath.strip_dir_sep i in
           if Fpath.Set.mem i seen then acc else
           let acc = Fpath.Set.add i seen, by_ext in
           if not (Os.Dir.exists i |> Result.to_failure) then acc else
@@ -397,7 +397,7 @@ module Conf_setup = struct
         | Some f -> Some Fpath.(cwd // f)
         | None -> root_brzo_file
         in
-        Ok (Fpath.to_dir_path root, brzo_file)
+        Ok (Fpath.add_dir_sep root, brzo_file)
 
   (* BRZO file *)
 
