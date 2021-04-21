@@ -7,7 +7,7 @@ open B00_std
 open B00
 
 module Tool = struct
-  let xelatex = Tool.by_name "xelatex"
+  let xelatex = Tool.by_name ~vars:["PATH"] "xelatex"
   let bibtex = Tool.by_name "bibtex"
 end
 
