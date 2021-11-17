@@ -21,7 +21,8 @@ end
 
 module Compile : sig
   val cmd :
-    Memo.t -> ?args:Cmd.t -> tex:Fpath.t -> dir:Fpath.t -> oname:string -> unit
+    Memo.t -> ?args:Cmd.t -> tex:Fpath.t -> dir:Fpath.t -> oname:string ->
+    unit -> unit
     (** [cmd ~tex ~o] compiles [tex] to the PDF file [oname.pdf] in [dir]
         using {!Tool.xelatex}. *)
 end

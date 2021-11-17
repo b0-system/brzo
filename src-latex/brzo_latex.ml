@@ -24,7 +24,7 @@ module Conf = struct
         Fmt.field "main" main (Brzo.Conf.pp_auto Fpath.pp_quoted);
         Fmt.field "doi-resolver" doi_resolver Fmt.string; ]
 
-  let tid : t Tid.t = Tid.create ()
+  let tid : t Tid.t = Tid.v ()
   let docs = Brzo.Cli.s_outcome_opts
 
   let curl_key = "curl"
@@ -64,7 +64,7 @@ module Conf = struct
   let keys = String.Set.of_list [curl_key; doi_resolver_key; main_key]
   let parse = get_conf None None None
   let parse_with_cli =
-    Cmdliner.Term.(pure get_conf $ Brzo.Conf.Bit.cli curl_c $
+    Cmdliner.Term.(const get_conf $ Brzo.Conf.Bit.cli curl_c $
                    Brzo.Conf.Bit.cli doi_resolver_c $ Brzo.Conf.Bit.cli main_c)
 end
 

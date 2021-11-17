@@ -12,7 +12,7 @@ module Tool = struct
 end
 
 module Compile = struct
-  let cmd m ?args:(more_args = Cmd.empty) ~tex ~dir ~oname =
+  let cmd m ?args:(more_args = Cmd.empty) ~tex ~dir ~oname () =
     let xelatex = Memo.tool m Tool.xelatex in
     let pdf = Fpath.(dir / Fmt.str "%s.pdf" oname) in
     let fls = Fpath.(dir / Fmt.str "%s.fls" oname) in

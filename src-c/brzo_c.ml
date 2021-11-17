@@ -35,7 +35,7 @@ module Conf = struct
   let doxyfile c = c.doxyfile
   let use_dot c = c.use_dot
 
-  let tid : t B00_std.Tid.t = Tid.create ()
+  let tid : t B00_std.Tid.t = Tid.v ()
   let docs = Brzo.Cli.s_outcome_opts
 
   let doxyfile_key = "doxyfile"
