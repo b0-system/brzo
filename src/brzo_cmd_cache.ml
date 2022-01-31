@@ -82,9 +82,9 @@ let parse_cli =
   Term.(ret (const parse_cli $ action $ keys))
 
 let cmd =
-  Term.(const cache $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $
-        B00_cli.File_cache.trim_cli () $ parse_cli),
-  Term.info "cache" ~doc ~sdocs ~exits ~man ~man_xrefs
+  Cmd.v (Cmd.info "cache" ~doc ~sdocs ~exits ~man ~man_xrefs)
+    Term.(const cache $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $
+          B00_cli.File_cache.trim_cli () $ parse_cli)
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2018 The brzo programmers

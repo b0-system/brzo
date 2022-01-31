@@ -24,9 +24,9 @@ let domain_cmd (Brzo_domain.V d as domain) =
     `S Brzo.Cli.s_outcome_mode;
     Brzo.Cli.man_see_manual; ]
   in
-  Term.(const Brzo_domain.run $ Brzo_tie_conf.for_domain ~domain $
-        const domain),
-  Term.info D.name ~doc ~docs ~sdocs ~exits ~man ~man_xrefs
+  Cmd.v (Cmd.info D.name ~doc ~docs ~sdocs ~exits ~man ~man_xrefs)
+    Term.(const Brzo_domain.run $ Brzo_tie_conf.for_domain ~domain $
+          const domain)
 
 let cmds =
   Brzo_cmd_cache.cmd :: Brzo_cmd_default.cmd :: Brzo_cmd_domain.cmd ::
@@ -34,7 +34,7 @@ let cmds =
   Brzo_cmd_root.cmd :: Brzo_cmd_sources.cmd ::
   List.rev_map domain_cmd Brzo_domain_list.v
 
-let brzo =
+let tool =
   let doc = "Quick-setting builds" in
   let sdocs = Manpage.s_common_options in
   let exits = Brzo.Exit.Info.domain_cmd in
@@ -59,14 +59,15 @@ let brzo =
     `S Manpage.s_bugs;
     `P "Report them, see $(i,%%PKG_HOMEPAGE%%) for contact information."; ]
   in
-  fst Brzo_cmd_default.cmd,
-  Term.info "brzo" ~version:"%%VERSION%%" ~doc ~sdocs ~exits ~man
+  Cmd.group
+    (Cmd.info "brzo" ~version:"%%VERSION%%" ~doc ~sdocs ~exits ~man)
+    ~default:Brzo_cmd_default.term cmds
 
 let main () =
   B00_cli.Exit.exit ~exec_error:Brzo.Exit.some_error @@
   Log.time (fun _ m -> m "total time brzo %%VERSION%%") @@ fun () ->
   B00_cli.Exit.of_eval_result ~term_error:Brzo.Exit.conf_error @@
-  Term.eval_choice brzo cmds
+  Cmd.eval_value tool
 
 let () = if !Sys.interactive then () else main ()
 

@@ -65,10 +65,12 @@ let man = [
   `S Brzo.Cli.s_outcome_mode;
   Brzo.Cli.man_see_manual; ]
 
-let cmd =
+let term =
   let domain = Brzo_domain.V (module Default) in
-  Term.(const default $ Brzo_tie_conf.for_domain ~domain),
-  Term.info "default" ~doc ~docs ~sdocs ~exits ~man ~man_xrefs
+  Term.(const default $ Brzo_tie_conf.for_domain ~domain)
+
+let cmd =
+  Cmd.v (Cmd.info "default" ~doc ~docs ~sdocs ~exits ~man ~man_xrefs) term
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2018 The brzo programmers

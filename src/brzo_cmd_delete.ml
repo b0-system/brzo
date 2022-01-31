@@ -37,8 +37,8 @@ let clean =
   Arg.(value & flag & info ["c"; "clean"] ~doc)
 
 let cmd =
-  Term.(const delete $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $ clean),
-  Term.info "delete" ~doc ~sdocs ~exits ~man ~man_xrefs
+  Cmd.v (Cmd.info "delete" ~doc ~sdocs ~exits ~man ~man_xrefs)
+    Term.(const delete $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $ clean)
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2018 The brzo programmers

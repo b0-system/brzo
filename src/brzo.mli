@@ -58,15 +58,15 @@ module Exit : sig
 
   (** Cmdliner documentation. *)
   module Info : sig
-    val action_exec_exit : Cmdliner.Term.exit_info
-    val conf_error : Cmdliner.Term.exit_info
-    val no_build_outcome : Cmdliner.Term.exit_info
-    val outcome_action_error : Cmdliner.Term.exit_info
-    val outcome_build_error : Cmdliner.Term.exit_info
-    val some_error : Cmdliner.Term.exit_info
-    val undefined_domain : Cmdliner.Term.exit_info
-    val base_cmd : Cmdliner.Term.exit_info list
-    val domain_cmd : Cmdliner.Term.exit_info list
+    val action_exec_exit : Cmdliner.Cmd.Exit.info
+    val conf_error : Cmdliner.Cmd.Exit.info
+    val no_build_outcome : Cmdliner.Cmd.Exit.info
+    val outcome_action_error : Cmdliner.Cmd.Exit.info
+    val outcome_build_error : Cmdliner.Cmd.Exit.info
+    val some_error : Cmdliner.Cmd.Exit.info
+    val undefined_domain : Cmdliner.Cmd.Exit.info
+    val base_cmd : Cmdliner.Cmd.Exit.info list
+    val domain_cmd : Cmdliner.Cmd.Exit.info list
   end
 end
 

@@ -23,8 +23,9 @@ let man = [
   Brzo.Cli.man_see_manual; ]
 
 let cmd =
-  Term.(const root $ Brzo_tie_conf.no_brzo_file),
-  Term.info "root" ~doc ~sdocs ~exits ~man ~man_xrefs
+  Cmd.v (Cmd.info "root" ~doc ~sdocs ~exits ~man ~man_xrefs)
+    Term.(const root $ Brzo_tie_conf.no_brzo_file)
+
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2018 The brzo programmers

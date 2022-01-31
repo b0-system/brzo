@@ -56,8 +56,8 @@ let doms =
   Arg.(value & opt_all string [] & info ["d"; "domain"] ~doc ~docv:"DOMAIN")
 
 let cmd =
-  Term.(const sources $ Brzo_tie_conf.use_brzo_file $ doms),
-  Term.info "sources" ~doc ~sdocs ~exits ~envs ~man ~man_xrefs
+  Cmd.v (Cmd.info "sources" ~doc ~sdocs ~exits ~envs ~man ~man_xrefs)
+    Term.(const sources $ Brzo_tie_conf.use_brzo_file $ doms)
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2018 The brzo programmers

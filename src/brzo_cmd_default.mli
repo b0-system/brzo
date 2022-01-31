@@ -5,7 +5,10 @@
 
 (** Brzo's [default] command. *)
 
-val cmd : B00_std.Os.Exit.t Cmdliner.Term.t * Cmdliner.Term.info
+val term : B00_std.Os.Exit.t Cmdliner.Term.t
+(** [term] is the term for the [default] command. *)
+
+val cmd : B00_std.Os.Exit.t Cmdliner.Cmd.t
 (** [cmd] is the command line for [default]. *)
 
 (*---------------------------------------------------------------------------

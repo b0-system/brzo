@@ -205,9 +205,9 @@ let dry_run =
   Arg.(value & flag & info ["t"; "dry-run"] ~doc)
 
 let cmd =
-  Term.(const file $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $ action $
-        spath $ sexps $ dry_run),
-  Term.info "file" ~doc ~sdocs ~envs ~exits ~man ~man_xrefs
+  Cmd.v (Cmd.info "file" ~doc ~sdocs ~envs ~exits ~man ~man_xrefs)
+    Term.(const file $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $ action $
+          spath $ sexps $ dry_run)
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2018 The brzo programmers

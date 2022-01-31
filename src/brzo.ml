@@ -78,9 +78,9 @@ module Exit = struct
   let undefined_domain = Os.Exit.Code 119
 
   module Info = struct
-    let e c doc = Cmdliner.Term.exit_info (Os.Exit.get_code c) ~doc
+    let e c doc = Cmdliner.Cmd.Exit.info (Os.Exit.get_code c) ~doc
     let action_exec_exit =
-      Cmdliner.Term.exit_info 0 ~max:255
+      Cmdliner.Cmd.Exit.info 0 ~max:255
         ~doc:"on outcome action execution, the action exit code"
 
     let conf_error =
@@ -96,7 +96,7 @@ module Exit = struct
 
     let some_error = e some_error "on indiscriminate errors reported on stderr"
     let undefined_domain = e undefined_domain "on undefined domain"
-    let base_cmd = conf_error :: some_error :: Cmdliner.Term.default_exits
+    let base_cmd = conf_error :: some_error :: Cmdliner.Cmd.Exit.defaults
     let domain_cmd =
       action_exec_exit :: no_build_outcome ::
       outcome_build_error :: outcome_action_error :: undefined_domain ::
@@ -604,7 +604,7 @@ module Cli = struct
         Fpath.pp_quoted Fpath.null
     in
     let docv = "FILE" in
-    let env = Arg.env_var "BRZO_FILE" in
+    let env = Cmd.Env.info "BRZO_FILE" in
     let none = "BRZO file at the brzo root" in
     Arg.(value & opt (some ~none fpath) None &
          info ["brzo-file"] ~env ~doc ~docv ~docs)
@@ -641,22 +641,22 @@ module Cli = struct
        BRZO file."
     in
     let docv = "DIR" in
-    let env = Arg.env_var "BRZO_ROOT" in
+    let env = Cmd.Env.info "BRZO_ROOT" in
     let none = "automatically determined" in
     Arg.(value & opt (some ~none fpath) None &
          info ["root"] ~env ~doc ~docv ~docs)
 
   let hash_fun =
-    B00_cli.Memo.hash_fun ~docs ~env:(Arg.env_var "BRZO_HASH_FUN") ()
+    B00_cli.Memo.hash_fun ~docs ~env:(Cmd.Env.info "BRZO_HASH_FUN") ()
 
-  let jobs = B00_cli.Memo.jobs ~docs ~env:(Arg.env_var "BRZO_JOBS") ()
+  let jobs = B00_cli.Memo.jobs ~docs ~env:(Cmd.Env.info "BRZO_JOBS") ()
   let log_file =
-    let env = Arg.env_var "BRZO_LOG_FILE" in
+    let env = Cmd.Env.info "BRZO_LOG_FILE" in
     let doc_none = "$(b,.log) in $(b,brzo) directory of b0 directory" in
     B00_cli.Memo.log_file ~docs ~doc_none ~env ()
 
   let log_level =
-    B00_cli.B00_std.log_level ~docs ~env:(Arg.env_var "BRZO_VERBOSITY") ()
+    B00_cli.B00_std.log_level ~docs ~env:(Cmd.Env.info "BRZO_VERBOSITY") ()
 
   let no_pager = B00_pager.don't ~docs ()
   let pdf_viewer = B00_pdf_viewer.pdf_viewer ~docs ()
@@ -683,7 +683,8 @@ module Cli = struct
     let docv = "PATH" in
     Arg.(value & opt_all fpath [] & info ["x"; "srcs-x"] ~doc ~docv ~docs)
 
-  let tty_cap = B00_cli.B00_std.tty_cap ~docs ~env:(Arg.env_var "BRZO_COLOR") ()
+  let tty_cap =
+    B00_cli.B00_std.tty_cap ~docs ~env:(Cmd.Env.info "BRZO_COLOR") ()
 
   (* Domain specific cli *)
 

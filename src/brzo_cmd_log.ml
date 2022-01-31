@@ -39,11 +39,12 @@ let man = [
   Brzo.Cli.man_see_manual; ]
 
 let cmd =
-  Term.(const log $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $
-        B00_cli.Memo.Log.out_format_cli ~docs:docs_format () $
-        B00_cli.Arg.output_details ~docs:docs_details () $
-        B00_cli.Op.query_cli ~docs:docs_select ()),
-  Term.info "log" ~doc ~sdocs ~exits ~envs ~man ~man_xrefs
+  Cmd.v (Cmd.info "log" ~doc ~sdocs ~exits ~envs ~man ~man_xrefs)
+    Term.(const log $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $
+          B00_cli.Memo.Log.out_format_cli ~docs:docs_format () $
+          B00_cli.Arg.output_details ~docs:docs_details () $
+          B00_cli.Op.query_cli ~docs:docs_select ())
+
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2018 The brzo programmers
