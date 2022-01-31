@@ -60,7 +60,7 @@ module Js_of_ocaml = struct
 
   let js_fs_tmp_files ~cwd ~args =
     let js_file ~buf n c =
-      Fmt.str "{name:\"%s\", content: %s}" (js_escape n) (js_array buf c)
+      Fmt.str "{name:\"%s\", content: %s}" (js_escape n) (js_array ~buf c)
     in
     let buf = Buffer.create 255 in
     let add_file_arg acc a = match Fpath.of_string a with

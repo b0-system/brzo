@@ -18,11 +18,11 @@ let get_used_keys c = Result.value ~default:String.Set.empty (find_used_keys c)
 let cache c (max_byte_size, pct) (action, keys) =
   let dir = Brzo.Conf.cache_dir c in
   let action = match action with
-  | `Delete -> B00_cli.File_cache.delete dir keys
+  | `Delete -> B00_cli.File_cache.delete ~dir keys
   | `Gc ->
       Result.bind (find_used_keys c) @@ fun used ->
       B00_cli.File_cache.gc ~dir ~used
-  | `Keys -> B00_cli.File_cache.keys dir
+  | `Keys -> B00_cli.File_cache.keys ~dir
   | `Path -> Log.app (fun m -> m "%a" Fpath.pp_unquoted dir); Ok true
   | `Stats -> B00_cli.File_cache.stats ~dir ~used:(get_used_keys c)
   | `Trim ->

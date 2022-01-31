@@ -186,7 +186,7 @@ let get_miss_deps_help r opam_pkgs miss_deps =
         | [] ->
             if not root_in_resolver
             then `Suggest (dep, String.suggest all_deps root) else
-            let starts_with f = String.starts_with root f in
+            let starts_with f = String.starts_with ~prefix:root f in
             `Suggest (dep, List.filter starts_with all_deps)
         | suggest -> `Suggest (dep, suggest)
   in
