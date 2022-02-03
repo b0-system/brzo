@@ -605,9 +605,9 @@ module Cli = struct
     in
     let docv = "FILE" in
     let env = Cmd.Env.info "BRZO_FILE" in
-    let none = "BRZO file at the brzo root" in
-    Arg.(value & opt (some ~none fpath) None &
-         info ["brzo-file"] ~env ~doc ~docv ~docs)
+    let absent = "$(b,BRZO) file at the brzo root" in
+    Arg.(value & opt (some fpath) None &
+         info ["brzo-file"] ~absent ~env ~doc ~docv ~docs)
 
   let background = B00_www_browser.background ~docs ()
   let www_browser = B00_www_browser.browser ~docs ()
