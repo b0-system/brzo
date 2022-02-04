@@ -22,27 +22,21 @@ open Cmdliner
 
 let cmd =
   let doc = "Show build log" in
-  let docs_format = "OUTPUT FORMATS" in
-  let docs_details = "OUTPUT DETAILS" in
-  let docs_select = "OPTIONS FOR SELECTING OPERATIONS" in
   let exits = Brzo.Exit.Info.base_cmd in
   let envs = B00_pager.envs () in
   let man = [
     `S Manpage.s_description;
     `P "The $(tname) command shows build information and operations in \
-      various formats.";
-    `S docs_format;
-    `S docs_details;
-    `P "If applicable.";
-    `S docs_select;
+        various formats.";
+    `S B00_cli.s_output_format_options;
+    `S B00_cli.Op.s_selection_options;
     `Blocks B00_cli.Op.query_man;
     Brzo.Cli.man_see_manual; ]
   in
   Cmd.v (Cmd.info "log" ~doc ~exits ~envs ~man)
     Term.(const log $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $
-          B00_cli.Memo.Log.out_format_cli ~docs:docs_format () $
-          B00_cli.Arg.output_details ~docs:docs_details () $
-          B00_cli.Op.query_cli ~docs:docs_select ())
+          B00_cli.Memo.Log.out_format_cli () $ B00_cli.Arg.output_format () $
+          B00_cli.Op.query_cli ())
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2018 The brzo programmers
