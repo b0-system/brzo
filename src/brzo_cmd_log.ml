@@ -4,14 +4,15 @@
   ---------------------------------------------------------------------------*)
 
 open B00_std
+open Result.Syntax
 
 let log c format details op_selector =
   Log.if_error ~use:Brzo.Exit.some_error @@
   let don't = Brzo.Conf.no_pager c || format = `Trace_event in
   let log_file = Brzo.Conf.log_file c in
-  Result.bind (B00_pager.find ~don't ()) @@ fun pager ->
-  Result.bind (B00_pager.page_stdout pager) @@ fun () ->
-  Result.bind (B00_cli.Memo.Log.read log_file) @@ fun l ->
+  let* pager = B00_pager.find ~don't () in
+  let* () = B00_pager.page_stdout pager in
+  let* l = B00_cli.Memo.Log.read log_file in
   B00_cli.Memo.Log.out Fmt.stdout format details op_selector ~path:log_file l;
   Ok Brzo.Exit.ok
 
@@ -19,32 +20,29 @@ let log c format details op_selector =
 
 open Cmdliner
 
-let doc = "Show build log"
-let sdocs = Manpage.s_common_options
-let docs_format = "OUTPUT FORMATS"
-let docs_details = "OUTPUT DETAILS"
-let docs_select = "OPTIONS FOR SELECTING OPERATIONS"
-let exits = Brzo.Exit.Info.base_cmd
-let envs = B00_pager.envs ()
-let man_xrefs = [ `Main ]
-let man = [
-  `S Manpage.s_description;
-  `P "The $(tname) command shows build information and operations in
-      various formats.";
-  `S docs_format;
-  `S docs_details;
-  `P "If applicable.";
-  `S docs_select;
-  `Blocks B00_cli.Op.query_man;
-  Brzo.Cli.man_see_manual; ]
-
 let cmd =
-  Cmd.v (Cmd.info "log" ~doc ~sdocs ~exits ~envs ~man ~man_xrefs)
+  let doc = "Show build log" in
+  let docs_format = "OUTPUT FORMATS" in
+  let docs_details = "OUTPUT DETAILS" in
+  let docs_select = "OPTIONS FOR SELECTING OPERATIONS" in
+  let exits = Brzo.Exit.Info.base_cmd in
+  let envs = B00_pager.envs () in
+  let man = [
+    `S Manpage.s_description;
+    `P "The $(tname) command shows build information and operations in \
+      various formats.";
+    `S docs_format;
+    `S docs_details;
+    `P "If applicable.";
+    `S docs_select;
+    `Blocks B00_cli.Op.query_man;
+    Brzo.Cli.man_see_manual; ]
+  in
+  Cmd.v (Cmd.info "log" ~doc ~exits ~envs ~man)
     Term.(const log $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $
           B00_cli.Memo.Log.out_format_cli ~docs:docs_format () $
           B00_cli.Arg.output_details ~docs:docs_details () $
           B00_cli.Op.query_cli ~docs:docs_select ())
-
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2018 The brzo programmers

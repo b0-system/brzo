@@ -39,17 +39,18 @@ let tool =
   let sdocs = Manpage.s_common_options in
   let exits = Brzo.Exit.Info.domain_cmd in
   let man = [
+    `S Manpage.s_synopsis;
+    `P "$(mname) -- [$(i,ARG)]…"; `Noblank;
+    `P "$(mname) $(i,COMMAND) …";
     `S Manpage.s_description;
     `P "$(mname) quickly turns source files of various languages into \
         executable programs and documents. It has support for C, CommonMark, \
         LaTeX and OCaml.";
-    `Pre "Use '$(mname) -- $(b,ARG)...' to build and execute a program with \
-          arguments $(b,ARG)...";
-    `Noblank;
+    `Pre "Use $(mname) -- [$(b,ARG)]… to build and execute a program with \
+          given arguments."; `Noblank;
     `Pre
-      "Use '$(mname) $(b,--doc)' to build and show source file documentation.";
-    `Noblank;
-    `Pre "Use '$(mname) $(b,COMMAND --help)' for help on command $(b,COMMAND).";
+      "Use $(mname) $(b,--doc) to build and show source file documentation.";
+    `Pre "Use $(mname) [$(i,COMMAND)]… $(b,--help) for help about any command.";
     `P "More information is available in the manual, see $(b,odig doc brzo).";
     `S Brzo.Cli.s_domains;
     `S Manpage.s_arguments;

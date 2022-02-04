@@ -4,87 +4,127 @@
   ---------------------------------------------------------------------------*)
 
 open B00_std
+open Result.Syntax
 
 let find_used_keys c =
-  Result.bind (Os.Dir.exists (Brzo.Conf.cache_dir c)) @@ function
-  | false -> Ok (String.Set.empty)
-  | true ->
-      Result.map_error (Fmt.str "Cannot determine used keys: %s") @@
-      Result.bind (B00_cli.Memo.Log.read (Brzo.Conf.log_file c)) @@ fun l ->
-      Ok (B00_cli.File_cache.keys_of_done_ops (B00_cli.Memo.Log.ops l))
+  let* exists = Os.Dir.exists (Brzo.Conf.cache_dir c) in
+  if exists then Ok (String.Set.empty) else
+  (Result.map_error (Fmt.str "Cannot determine used keys: %s") @@
+   let* l = B00_cli.Memo.Log.read (Brzo.Conf.log_file c) in
+   Ok (B00_cli.File_cache.keys_of_done_ops (B00_cli.Memo.Log.ops l)))
 
 let get_used_keys c = Result.value ~default:String.Set.empty (find_used_keys c)
 
-let cache c (max_byte_size, pct) (action, keys) =
-  let dir = Brzo.Conf.cache_dir c in
-  let action = match action with
-  | `Delete -> B00_cli.File_cache.delete ~dir keys
-  | `Gc ->
-      Result.bind (find_used_keys c) @@ fun used ->
-      B00_cli.File_cache.gc ~dir ~used
-  | `Keys -> B00_cli.File_cache.keys ~dir
-  | `Path -> Log.app (fun m -> m "%a" Fpath.pp_unquoted dir); Ok true
-  | `Stats -> B00_cli.File_cache.stats ~dir ~used:(get_used_keys c)
-  | `Trim ->
-      let used = get_used_keys c in
-      B00_cli.File_cache.trim ~dir ~used ~max_byte_size ~pct
-  in
+let delete c keys =
   Log.if_error ~use:Brzo.Exit.some_error @@
-  Result.bind action @@ fun _ -> Ok Brzo.Exit.ok
+  let dir = Brzo.Conf.cache_dir c in
+  let* _ = B00_cli.File_cache.delete ~dir keys in
+  Ok Brzo.Exit.ok
+
+let gc c =
+  Log.if_error ~use:Brzo.Exit.some_error @@
+  let dir = Brzo.Conf.cache_dir c in
+  let* used = find_used_keys c in
+  let* _ = B00_cli.File_cache.gc ~dir ~used in
+  Ok Brzo.Exit.ok
+
+let keys c =
+  Log.if_error ~use:Brzo.Exit.some_error @@
+  let dir = Brzo.Conf.cache_dir c in
+  let* _ = B00_cli.File_cache.keys ~dir in
+  Ok Brzo.Exit.ok
+
+let path c =
+  Log.if_error ~use:Brzo.Exit.some_error @@
+  let dir = Brzo.Conf.cache_dir c in
+  Log.app (fun m -> m "%a" Fpath.pp_unquoted dir);
+  Ok Brzo.Exit.ok
+
+let stats c =
+  Log.if_error ~use:Brzo.Exit.some_error @@
+  let dir = Brzo.Conf.cache_dir c in
+  let* _ = B00_cli.File_cache.stats ~dir ~used:(get_used_keys c) in
+  Ok Brzo.Exit.ok
+
+let trim c (max_byte_size, pct) =
+  Log.if_error ~use:Brzo.Exit.some_error @@
+  let dir = Brzo.Conf.cache_dir c in
+  let used = get_used_keys c in
+  let* _ = B00_cli.File_cache.trim ~dir ~used ~max_byte_size ~pct in
+  Ok Brzo.Exit.ok
 
 (* Command line interface *)
 
 open Cmdliner
 
-let doc = "Operate on the build cache"
-let sdocs = Manpage.s_common_options
-let exits = Brzo.Exit.Info.base_cmd
-let man_xrefs = [ `Main; `Tool "b00-cache" ]
-let man = [
-  `S Manpage.s_synopsis;
-  `P "$(mname) $(tname) $(i,ACTION) [$(i,OPTION)]...";
-  `S Manpage.s_description;
-  `P "The $(tname) command operates on the build cache.";
-  `S "ACTIONS";
-  `I ("$(b,delete) [$(i,KEY)]...", "Delete the cache or only the given keys.");
-  `I ("$(b,gc)", "Only keep keys used by the last build.");
-  `I ("$(b,keys)", "List cache keys.");
-  `I ("$(b,path)", "Display the path to the cache (may not exist).");
-  `I ("$(b,stats)", "Show cache statistics.");
-  `I ("$(b,trim) [$(b,--to-pct) $(i,PCT)] [$(b,--to-mb) $(i,MB)]",
-      "Trim the cache to the minimal budget specified. Without options \
-       trims to 50% of the current size. Keys used by the last build \
-       are preserved if possible.");
-  Brzo.Cli.man_see_manual; ]
+let subcmd
+    ?(exits = Brzo.Exit.Info.base_cmd) ?(envs = []) name ~doc ~descr term
+  =
+  let man = [`S Manpage.s_description; descr] in
+  Cmd.v (Cmd.info name ~doc ~exits ~envs ~man) term
 
-let action =
-  let action =
-    [ "delete", `Delete; "gc", `Gc; "keys", `Keys; "path", `Path;
-      "stats", `Stats; "trim", `Trim ]
-  in
-  let doc =
-    Fmt.str "The action to perform. $(docv) must be one of %s."
-      (Arg.doc_alts_enum action)
-  in
-  let action = Arg.enum action in
-  Arg.(required & pos 0 (some action) None & info [] ~doc ~docv:"ACTION")
+let stats_term =
+  Term.(const stats $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file)
 
-let parse_cli =
-  let keys = B00_cli.File_cache.keys_none_is_all ~pos_right:1 () in
-  let parse_cli action keys =
-    let has_keys = match keys with `Keys _ -> true | _ -> false in
-    match has_keys && action <> `Delete with
-    | false -> `Ok (action, keys)
-    | true ->
-        `Error (true,
-                "too many argument, no positional arguments for this action")
-  in
-  Term.(ret (const parse_cli $ action $ keys))
+(* Commands *)
 
+let delete =
+  let doc = "Delete cache or given keys" in
+  let descr = `P "$(tname) deletes cache or given keys." in
+  let keys = B00_cli.File_cache.keys_none_is_all ~pos_right:(-1) () in
+  subcmd "delete" ~doc ~descr
+    Term.(const delete $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $ keys)
+
+let gc =
+  let doc = "Only keep keys used by the last build." in
+  let descr = `P "$(tname) all keys except those used by the last build." in
+  subcmd "gc" ~doc ~descr
+    Term.(const gc $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file)
+
+let keys =
+  let doc = "List cache keys" in
+  let descr = `P "$(tname) lists all cache keys." in
+  subcmd "keys" ~doc ~descr
+    Term.(const keys $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file)
+
+let path =
+  let doc = "Output cache directory path (may not exist)" in
+  let descr = `P "$(tname) outputs the cache directory path." in
+  subcmd "path" ~doc ~descr
+    Term.(const path $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file)
+
+let stats =
+  let doc = "Output cache statistics (default command)" in
+  let descr = `P "$(tname) outputs cache statistics." in
+  subcmd "stats" ~doc ~descr
+    Term.(const stats $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file)
+
+let trim =
+  let doc = "Trim the cache to a given budget." in
+  let descr = `Blocks [
+      `P "$(tname) trims the cache to the minimal given budget. Keys used \
+          by the last build are preserved whenever possible.";
+      `P "Without options trims to 50% of the current size." ]
+  in
+  subcmd "trim" ~doc ~descr
+    Term.(const trim $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $
+          B00_cli.File_cache.trim_cli ())
+
+let subs = [delete; gc; keys; path; stats; trim]
 let cmd =
-  Cmd.v (Cmd.info "cache" ~doc ~sdocs ~exits ~man ~man_xrefs)
-    Term.(const cache $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $
-          B00_cli.File_cache.trim_cli () $ parse_cli)
+  let doc = "Operate on the build cache" in
+  let exits = Brzo.Exit.Info.base_cmd in
+  let man_xrefs = [ `Main; `Tool "b00-cache" ] in
+  let man = [
+    `S Manpage.s_description;
+    `P "The $(tname) command operates on the build cache. The default \
+        command is $(b,stats).";
+    Brzo.Cli.man_see_manual; ]
+  in
+  Cmd.group (Cmd.info "cache" ~doc ~exits ~man ~man_xrefs)
+    ~default:stats_term subs
+
+
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2018 The brzo programmers

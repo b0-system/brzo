@@ -4,31 +4,31 @@
   ---------------------------------------------------------------------------*)
 
 open B00_std
+open Result.Syntax
 
 let domain c =
   Log.if_error ~use:Brzo.Exit.undefined_domain @@
-  Result.bind (Brzo_domain.of_conf c Brzo_domain_list.v) @@
-  fun d -> Log.app (fun m -> m "@[%s@]" (Brzo_domain.name d)); Ok Brzo.Exit.ok
+  let* d = Brzo_domain.of_conf c Brzo_domain_list.v in
+  Log.app (fun m -> m "@[%s@]" (Brzo_domain.name d));
+  Ok Brzo.Exit.ok
 
 (* Command line interface *)
 
 open Cmdliner
 
-let doc = "Show selected default domain"
-let sdocs = Manpage.s_common_options
-let exits = Brzo.Exit.Info.undefined_domain :: Brzo.Exit.Info.base_cmd
-let man_xrefs = [ `Main ]
-let man = [
-  `S Manpage.s_description;
-  `P "The $(tname) command shows the default domain of a $(mname) \
-      invocation. The default domain is either automatically selected \
-      according to the sources that are present in the BRZO root or \
-      explicitely set by the BRZO file.";
-  `P "See the manual in $(b,odig doc brzo) for more details.";
-  Brzo.Cli.man_see_manual; ]
-
 let cmd =
-  Cmd.v (Cmd.info "domain" ~doc ~sdocs ~exits ~man ~man_xrefs)
+  let doc = "Show selected default domain" in
+  let exits = Brzo.Exit.Info.undefined_domain :: Brzo.Exit.Info.base_cmd in
+  let man = [
+    `S Manpage.s_description;
+    `P "The $(tname) command shows the default domain of a $(mname) \
+        invocation. The default domain is either automatically selected \
+        according to the sources that are present in the BRZO root or \
+        explicitely set by the BRZO file.";
+    `P "See the manual in $(b,odig doc brzo) for more details.";
+    Brzo.Cli.man_see_manual; ]
+  in
+  Cmd.v (Cmd.info "domain" ~doc ~exits ~man)
     Term.(const domain $ Brzo_tie_conf.use_brzo_file)
 
 (*---------------------------------------------------------------------------

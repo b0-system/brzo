@@ -4,6 +4,7 @@
   ---------------------------------------------------------------------------*)
 
 open B00_std
+open Result.Syntax
 
 let exts_of_doms = function
 | [] -> Ok None
@@ -17,17 +18,19 @@ let exts_of_doms = function
 
 let sources c doms =
   Log.if_error ~use:Brzo.Exit.undefined_domain @@
-  Result.bind (exts_of_doms doms) @@ fun exts ->
+  let* exts = exts_of_doms doms in
   Log.if_error' ~use:Brzo.Exit.some_error @@
-  Result.bind (B00_pager.find ~don't:(Brzo.Conf.no_pager c) ()) @@ fun pager ->
-  Result.bind (B00_pager.page_stdout pager) @@ fun () ->
-  Result.bind (Brzo.Conf.srcs c) @@ fun src_by_exts ->
-  let add_files ext srcs acc = match exts with
-  | None -> List.rev_append srcs acc
-  | Some exts when String.Set.mem ext exts -> List.rev_append srcs acc
-  | Some _ -> acc
+  let* pager = B00_pager.find ~don't:(Brzo.Conf.no_pager c) () in
+  let* () = B00_pager.page_stdout pager in
+  let* src_by_exts = Brzo.Conf.srcs c in
+  let srcs =
+    let add_files ext srcs acc = match exts with
+    | None -> List.rev_append srcs acc
+    | Some exts when String.Set.mem ext exts -> List.rev_append srcs acc
+    | Some _ -> acc
+    in
+    String.Map.fold add_files src_by_exts []
   in
-  let srcs = String.Map.fold add_files src_by_exts [] in
   match List.sort Fpath.compare srcs with
   | [] -> Ok Brzo.Exit.ok
   | srcs ->
@@ -38,25 +41,23 @@ let sources c doms =
 
 open Cmdliner
 
-let doc = "Show source files"
-let sdocs = Manpage.s_common_options
-let exits = Brzo.Exit.Info.undefined_domain :: Brzo.Exit.Info.base_cmd
-let envs = B00_pager.envs ()
-let man_xrefs = [ `Main ]
-let man = [
-  `S Manpage.s_description;
-  `P "The $(tname) command lists the source files considered by a $(mname) \
-      invocation.";
-  Brzo.Cli.man_see_manual; ]
-
-let doms =
-  let doc =
-    "Output files considered for selecting domain $(docv). Repeatable."
-  in
-  Arg.(value & opt_all string [] & info ["d"; "domain"] ~doc ~docv:"DOMAIN")
-
 let cmd =
-  Cmd.v (Cmd.info "sources" ~doc ~sdocs ~exits ~envs ~man ~man_xrefs)
+  let doc = "Show source files" in
+  let exits = Brzo.Exit.Info.undefined_domain :: Brzo.Exit.Info.base_cmd in
+  let envs = B00_pager.envs () in
+  let man = [
+    `S Manpage.s_description;
+    `P "The $(tname) command lists the source files considered by a $(mname) \
+        invocation.";
+    Brzo.Cli.man_see_manual; ]
+  in
+  let doms =
+    let doc =
+      "Output files considered for selecting domain $(docv). Repeatable."
+    in
+    Arg.(value & opt_all string [] & info ["d"; "domain"] ~doc ~docv:"DOMAIN")
+  in
+  Cmd.v (Cmd.info "sources" ~doc ~exits ~envs ~man)
     Term.(const sources $ Brzo_tie_conf.use_brzo_file $ doms)
 
 (*---------------------------------------------------------------------------

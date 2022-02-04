@@ -13,19 +13,16 @@ let root c =
 
 open Cmdliner
 
-let doc = "Show root directory"
-let sdocs = Manpage.s_common_options
-let exits = Brzo.Exit.Info.base_cmd
-let man_xrefs = [ `Main ]
-let man = [
-  `S Manpage.s_description;
-  `P "The $(tname) command shows the brzo root directory.";
-  Brzo.Cli.man_see_manual; ]
-
 let cmd =
-  Cmd.v (Cmd.info "root" ~doc ~sdocs ~exits ~man ~man_xrefs)
+  let doc = "Show root directory" in
+  let exits = Brzo.Exit.Info.base_cmd in
+  let man = [
+    `S Manpage.s_description;
+    `P "The $(tname) command shows the brzo root directory.";
+    Brzo.Cli.man_see_manual; ]
+  in
+  Cmd.v (Cmd.info "root" ~doc ~exits ~man)
     Term.(const root $ Brzo_tie_conf.no_brzo_file)
-
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2018 The brzo programmers

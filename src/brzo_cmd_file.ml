@@ -4,6 +4,7 @@
   ---------------------------------------------------------------------------*)
 
 open B00_std
+open Result.Syntax
 open B00_serialk_sexp
 
 (* A few notes that may end up being ux quirks.
@@ -20,15 +21,14 @@ let show_sexp pp sexp =
 
 let get_action_arg parse ~kind v k =
   Log.if_error' ~use:Brzo.Exit.some_error @@
-  match v with
-  | None -> Fmt.error "No %s specified." kind
-  | Some v ->
+  match parse v with
+  | Ok v -> k v
+  | Error _ ->
       (* The parse errors are not really fit/good here we circumvent them
          for now. *)
-      match parse v with
-      | Error _ -> Fmt.error "Could not parse %s argument %S." kind v
-      | Ok v -> k v
+      Fmt.error "Could not parse %s argument %S." kind v
 
+(* FIXME this should be moved to cmdliner cli parsing **)
 let get_spath = get_action_arg Sexp.path_of_string ~kind:"s-expression path"
 let get_caret = get_action_arg Sexp.caret_of_string ~kind:"s-expression caret"
 let get_sexps = get_action_arg Brzo.Sexp.of_string ~kind:"s-expression"
@@ -58,6 +58,7 @@ let sexp_query query sexp k =
   Result.bind (Brzo.Sexp.query query sexp) k
 
 let delete c spath dry_run =
+  Log.if_error ~use:Brzo.Exit.some_error @@
   get_brzo_file c @@ fun file ->
   get_sexp_of_file file @@ fun sexp ->
   get_spath spath @@ fun spath ->
@@ -66,21 +67,24 @@ let delete c spath dry_run =
   Ok Brzo.Exit.ok
 
 let edit c =
+  Log.if_error ~use:Brzo.Exit.some_error @@
   let brzo_file = match Brzo.Conf.brzo_file c with
   | Some file -> file
   | None -> Fpath.(Brzo.Conf.root c / Brzo.Conf.brzo_file_name)
   in
-  Result.bind (B00_editor.find ()) @@ fun editor ->
-  Result.bind (B00_editor.edit_files editor [brzo_file]) @@ function
+  let* editor = B00_editor.find () in
+  let* exit = B00_editor.edit_files editor [brzo_file] in
+  match exit with
   | `Exited 0 -> Ok Brzo.Exit.ok
   | _ -> Ok Brzo.Exit.some_error
 
 let get c spath =
+  Log.if_error ~use:Brzo.Exit.some_error @@
   get_brzo_file c @@ fun file ->
   get_sexp_of_file file @@ fun sexp ->
   match spath with
   | None -> show_sexp Sexp.pp_seq_layout (fst sexp); Ok Brzo.Exit.ok
-  | Some _ ->
+  | Some spath ->
       get_spath spath @@ fun path ->
       sexp_query (Sexpq.path path Sexpq.sexp) sexp @@ fun r ->
       let is_key = function Sexp.Key _ :: _ -> true | _ -> false in
@@ -92,11 +96,13 @@ let get c spath =
       Ok Brzo.Exit.ok
 
 let path c =
+  Log.if_error ~use:Brzo.Exit.some_error @@
   get_brzo_file c @@ fun file ->
   Log.app (fun m -> m "%a" Fpath.pp_unquoted file);
   Ok Brzo.Exit.ok
 
 let set c caret sexps dry_run =
+  Log.if_error ~use:Brzo.Exit.some_error @@
   get_caret caret @@ fun caret ->
   get_sexps sexps @@ fun sexps ->
   get_brzo_file c @@ fun file ->
@@ -106,108 +112,134 @@ let set c caret sexps dry_run =
   update_file ~dry_run file sexp @@ fun () ->
   Ok Brzo.Exit.ok
 
-let file c action spath sexps dry_run =
-  Log.if_error ~use:Brzo.Exit.some_error @@
-  match action with
-  | `Delete -> delete c spath dry_run
-  | `Edit -> edit c
-  | `Get -> get c spath
-  | `Path -> path c
-  | `Set -> set c spath sexps dry_run
-
 (* Command line interface *)
 
 open Cmdliner
 
-let doc = "Query and edit the BRZO file"
-let sdocs = Manpage.s_common_options
-let exits = Brzo.Exit.Info.base_cmd
-let envs = B00_editor.envs ()
-let man_xrefs = [ `Main ]
-let man = [
-  `S Manpage.s_description;
-  `P "The $(tname) command queries and edits the BRZO file.";
-  `P "The file is edited on the command line using s-expression paths \
-      and carets.";
-  `S "PATHS AND CARETS";
-  `P "An s-expression path $(b,SPATH) is a sequence of dot separated \
-      bracketed key dictionary and list indexing operations. Brackets \
-      can be omited if there is no ambiguity. List indices are \
-      zero-based and negative numbers count from the end: -1 is the \
-      last element of a list. Examples:";
-  `Pre "$(b,ocaml.libs)       # value of key $(b,libs) in dictionary \
-        $(b,ocaml)"; `Noblank;
-  `Pre "$(b,ocaml.libs.[0])   # first element of value bound to \
-        $(b,ocaml.libs)"; `Noblank;
-  `Pre "$(b,ocaml.libs.[-1])  # last element of value bound to \
-        $(b,ocaml.libs)";
-  `P "An s-expression caret $(b,CARET) is an s-expression path whose last \
-      index may specify an insertion point $(b,v) before or after the \
-      brackets to denote an insertion before or after the expression found \
-      by the path. Examples:";
-  `Pre "$(b,ocaml.v[libs])     # before key $(b,libs) in dictionary \
-        $(b,ocaml)"; `Noblank;
-  `Pre "$(b,ocaml.libs.v[0])   # before first element of value bound to \
-        $(b,ocaml.libs)"; `Noblank;
-  `Pre "$(b,ocaml.libs.[-1]v)  # after last element of value bound to \
-        $(b,ocaml.libs)";
-  `S "ACTIONS";
-  `I ("$(b,delete) [$(b,--dry-run)] $(i,SPATH)",
-      "Delete the s-expression at path $(i,SPATH) from the BRZO file. If \
-       $(i,SPATH) ends with a key index it removes the binding. If \
-       $(b,--dry-run) is specified the file is not modified and the result \
-       of the operation on the BRZO file is output on $(b,stdout).");
-  `I ("$(b,edit)",
-      "Edit or create the BRZO file in your editor.");
-  `I ("$(b,get) [$(i,SPATH)]",
-      "Get the s-expression bound to path $(i,SPATH). If no path is specified \
-       the whole BRZO file is output. Key bindings are returned as a \
-       sequence of s-expressions.");
-  `I ("$(b,path)",
-      "Show the file path to the BRZO file. Errors if there is none.");
-  `I ("$(b,set) [$(b,--dry-run)] $(i,CARET) $(i,SEXPSEQ)",
-      "Splice the s-expression sequence $(i,SEXPSEQ) (a single cli arg) at the \
-       caret $(i,CARET) in the BRZO file. To set a key binding use \
-       a sequence of s-expressions not a list; the latter sets the first \
-       element of the binding to a list. If $(b,--dry-run) is specified \
-       the file is not modified and the result of the operation on the \
-       BRZO file is output on $(b,stdout).");
-  Brzo.Cli.man_see_manual ]
-
-let action =
-  let action =
-    [ "delete", `Delete; "edit", `Edit; "get", `Get; "path", `Path;
-      "set", `Set; ]
-  in
-  let doc =
-    Fmt.str "The action to perform. $(docv) must be one of %s."
-      (Arg.doc_alts_enum action)
-  in
-  let action = Arg.enum action in
-  Arg.(required & pos 0 (some action) None & info [] ~doc ~docv:"ACTION")
-
-let spath =
-  let doc = "The s-expression path or caret to act on (if applicable)." in
-  Arg.(value & pos 1 (some string) None & info [] ~doc ~docv:"SPATH")
-
-let sexps =
-  let doc =
-    "The $(b,set) value (if applicable). This is a sequence of s-expressions \
-     spliced at the caret. The sequence must be a single cli argument."
-  in
-  Arg.(value & pos 2 (some string) None & info [] ~doc ~docv:"SEXPSEQ")
-
 let dry_run =
-  let doc =
-    "If applicable, do not edit the BRZO file in place but show the result \
-     on stdout."
+  let doc = "Do not edit the BRZO file in place but show the result on stdout."
   in
   Arg.(value & flag & info ["t"; "dry-run"] ~doc)
 
+let subcmd
+    ?(exits = Brzo.Exit.Info.base_cmd) ?(envs = []) name ~doc ~descr term
+  =
+  let man = [`S Manpage.s_description; descr] in
+  Cmd.v (Cmd.info name ~doc ~exits ~envs ~man) term
+
+let path_term = Term.(const path $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file)
+
+(* Commands *)
+
+let delete =
+  let doc = "Delete an s-expression from the BRZO file" in
+  let descr = `Blocks [
+      `P "$(tname) delete the s-expression at path $(i,SPATH) from the BRZO \
+          file. If $(i,SPATH) ends with a key index it removes the binding.";
+      `P "If $(b,--dry-run) is specified the file is not modified and the \
+          result of the operation on the BRZO file is output on $(b,stdout)." ]
+  in
+  let spath =
+    let doc = "The s-expression path to act on. See $(mname) $(b,file --help) \
+               for the syntax." in
+    Arg.(required & pos 1 (some string) None & info [] ~doc ~docv:"SPATH")
+  in
+  subcmd "delete" ~doc ~descr
+    Term.(const delete $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $
+          spath $ dry_run)
+
+let edit =
+  let doc = "Edit or create the BRZO file" in
+  let descr = `P "$(tname) edits opens the BRZO file in your editor." in
+  let envs = B00_editor.envs () in
+  subcmd "edit" ~doc ~envs ~descr
+    Term.(const edit $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file)
+
+let get =
+  let doc = "Get an s-expression from the BRZO file" in
+  let descr =
+    `P "$(tname) outputs the s-expression bound to path $(i,SPATH). \
+        If no path is specified the whole BRZO file is output. Key bindings \
+        are returned as a sequence of s-expressions."
+  in
+  let spath =
+    let doc = "The s-expression path to get. See $(mname) $(b,file --help) \
+               for the path syntax." in
+    Arg.(value & pos 1 (some string) None & info [] ~doc ~docv:"SPATH")
+  in
+  subcmd "get" ~doc ~descr
+    Term.(const get $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $ spath)
+
+let path =
+  let doc = "Output the BRZO file path (default command)" in
+  let descr = `P "$(tname) outputs the file path to the BRZO file. \
+                  Errors if there is none."
+  in
+  subcmd "path" ~doc ~descr path_term
+
+let set =
+  let doc = "Set an s-expression in the BRZO file" in
+  let descr = `Blocks [
+      `P "$(tname) splices the s-expression sequence $(i,SEXPSEQ) (a single \
+          cli arg) at the caret $(i,CARET) in the BRZO file.";
+      `P "To set a key binding use a sequence of s-expressions not a list; \
+           the latter sets the first element of the binding to a list.";
+      `P "If $(b,--dry-run) is specified the file is not modified and the \
+          result of the operation on the BRZO file is output on $(b,stdout)."]
+  in
+  let caret =
+    let doc = "The s-expression caret to act on. See $(mname) $(b,file --help) \
+               for the caret syntax."
+    in
+    Arg.(required & pos 1 (some string) None & info [] ~doc ~docv:"CARET")
+  in
+  let sexps =
+    let doc =
+      "The $(b,set) value. This is a sequence of s-expressions \
+       spliced at the caret. The sequence must be a single cli argument."
+    in
+    Arg.(required & pos 2 (some string) None & info [] ~doc ~docv:"SEXPSEQ")
+  in
+  subcmd "set" ~doc ~descr
+    Term.(const set $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $
+          caret $ sexps $ dry_run)
+
+let subs = [delete; edit; path; get; set]
 let cmd =
-  Cmd.v (Cmd.info "file" ~doc ~sdocs ~envs ~exits ~man ~man_xrefs)
-    Term.(const file $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $ action $
-          spath $ sexps $ dry_run)
+  let doc = "Query and edit the BRZO file" in
+  let exits = Brzo.Exit.Info.base_cmd in
+  let man = [
+    `S Manpage.s_description;
+    `P "The $(tname) command queries and edits the BRZO file. The default \
+        command is $(b,path).";
+    `P "The file is edited from the command line by using s-expression paths \
+        and carets which are described in a dedicated section below.";
+    `S Manpage.s_commands;
+    `S "PATHS AND CARETS";
+    `P "An s-expression path $(b,SPATH) is a sequence of dot separated \
+        bracketed key dictionary and list indexing operations. Brackets \
+        can be omited if there is no ambiguity. List indices are \
+        zero-based and negative numbers count from the end: -1 is the \
+        last element of a list. Examples:";
+    `Pre "$(b,ocaml.libs)       # value of key $(b,libs) in dictionary \
+          $(b,ocaml)"; `Noblank;
+    `Pre "$(b,ocaml.libs.[0])   # first element of value bound to \
+          $(b,ocaml.libs)"; `Noblank;
+    `Pre "$(b,ocaml.libs.[-1])  # last element of value bound to \
+          $(b,ocaml.libs)";
+    `P "An s-expression caret $(b,CARET) is an s-expression path whose last \
+        index may specify an insertion point $(b,v) before or after the \
+        brackets to denote an insertion before or after the expression found \
+        by the path. Examples:";
+    `Pre "$(b,ocaml.v[libs])     # before key $(b,libs) in dictionary \
+          $(b,ocaml)"; `Noblank;
+    `Pre "$(b,ocaml.libs.v[0])   # before first element of value bound to \
+          $(b,ocaml.libs)"; `Noblank;
+    `Pre "$(b,ocaml.libs.[-1]v)  # after last element of value bound to \
+          $(b,ocaml.libs)";
+    Brzo.Cli.man_see_manual ]
+  in
+  Cmd.group (Cmd.info "file" ~doc ~exits ~man) ~default:path_term subs
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2018 The brzo programmers
