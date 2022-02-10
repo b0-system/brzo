@@ -256,17 +256,35 @@ let write_merlin_file b =
 
 (* Exec outcome *)
 
-let drop_stdlib cobjs =
+let drop_stdlib_and_adjust_ext_cobjs b cobjs =
+  (* FIXME hack, needs a rework since 4.12 C archive
+     of cmxas may not exist so we need to pass them in B00_ocaml's `Link.code`
+     cobjs if they exist, we need to redo find_link_deps to include them
+     or maybe rework around Lib. Also why do we drop the stdlib ? *)
   let is_stdlib n = String.equal "stdlib" n in
-  let keep o = not (is_stdlib (Fpath.basename ~no_ext:true (Cobj.file o))) in
-  List.filter keep cobjs
+  let lib_ext = B00_ocaml.Conf.lib_ext b.ocaml_conf in
+  let rec loop b rfiles = function
+  | [] -> rfiles
+  | cobj :: cobjs ->
+      match is_stdlib (Fpath.basename ~no_ext:true (Cobj.file cobj)) with
+      | true -> loop b rfiles cobjs
+      | false ->
+          match Fpath.has_ext ".cmxa" (Cobj.file cobj) with
+          | false -> loop b (Cobj.file cobj :: rfiles) cobjs
+          | true ->
+              let clib = Fpath.set_ext lib_ext (Cobj.file cobj) in
+              match Os.File.exists clib |> Memo.fail_if_error b.m with
+              | false -> loop b (Cobj.file cobj :: rfiles) cobjs
+              | true -> loop b (Cobj.file cobj :: clib :: rfiles) cobjs
+  in
+  loop b [] cobjs
 
 let build_exe ?(opts = Cmd.empty) b ~code ~exe =
   let in_dir = b.build_dir in
   let opts = Cmd.(atom "-g" %% opts) in
   let* c_objs, cobjs = compile_srcs b ~code ~opts ~build_dir:in_dir in
   let* cobjs, ext_cobjs = find_link_deps b ~code ~in_dir cobjs in
-  let rev_ext_cobjs = List.rev_map Cobj.file (drop_stdlib ext_cobjs) in
+  let rev_ext_cobjs = drop_stdlib_and_adjust_ext_cobjs b ext_cobjs in
   let cobjs = List.rev_append rev_ext_cobjs (List.map Cobj.file cobjs) in
   write_merlin_file b;
   Link.code b.m ~conf:b.ocaml_conf ~code ~opts ~c_objs ~cobjs ~o:exe;
@@ -516,7 +534,7 @@ let build_html_top b ~top ~artefact =
   let* c_objs, cmos = compile_srcs ~more_srcs b ~code ~opts ~build_dir:in_dir in
   let* cmos, cmas = find_link_deps b ~code ~in_dir cmos in
   write_mod_names b.m (List.rev_append cmos cmas) ~o:mod_names;
-  let rev_cmas = List.rev_map Cobj.file (drop_stdlib cmas) in
+  let rev_cmas = drop_stdlib_and_adjust_ext_cobjs b cmas in
   let cmos = List.rev_append rev_cmas (List.map Cobj.file cmos) in
   write_merlin_file b;
   Link.byte b.m ~conf:b.ocaml_conf ~opts ~c_objs ~cobjs:cmos ~o:byte_exe;
