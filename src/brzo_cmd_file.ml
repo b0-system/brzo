@@ -142,7 +142,7 @@ let delete =
   let spath =
     let doc = "The s-expression path to act on. See $(mname) $(b,file --help) \
                for the syntax." in
-    Arg.(required & pos 1 (some string) None & info [] ~doc ~docv:"SPATH")
+    Arg.(required & pos 0 (some string) None & info [] ~doc ~docv:"SPATH")
   in
   subcmd "delete" ~doc ~descr
     Term.(const delete $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $
@@ -165,7 +165,7 @@ let get =
   let spath =
     let doc = "The s-expression path to get. See $(mname) $(b,file --help) \
                for the path syntax." in
-    Arg.(value & pos 1 (some string) None & info [] ~doc ~docv:"SPATH")
+    Arg.(value & pos 0 (some string) None & info [] ~doc ~docv:"SPATH")
   in
   subcmd "get" ~doc ~descr
     Term.(const get $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $ spath)
@@ -191,14 +191,14 @@ let set =
     let doc = "The s-expression caret to act on. See $(mname) $(b,file --help) \
                for the caret syntax."
     in
-    Arg.(required & pos 1 (some string) None & info [] ~doc ~docv:"CARET")
+    Arg.(required & pos 0 (some string) None & info [] ~doc ~docv:"CARET")
   in
   let sexps =
     let doc =
       "The $(b,set) value. This is a sequence of s-expressions \
        spliced at the caret. The sequence must be a single cli argument."
     in
-    Arg.(required & pos 2 (some string) None & info [] ~doc ~docv:"SEXPSEQ")
+    Arg.(required & pos 1 (some string) None & info [] ~doc ~docv:"SEXPSEQ")
   in
   subcmd "set" ~doc ~descr
     Term.(const set $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $
