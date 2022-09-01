@@ -1,0 +1,197 @@
+@charset "UTF-8";
+
+/* Copyright (c) 2020 The brzo programmers. All rights reserved.
+   Distributed under the ISC license, see terms at the end of the file. */
+
+* { margin: 0; padding: 0; box-sizing: border-box;
+    font-size: inherit; font: inherit; font-weight: inherit;
+    line-height: inherit; vertical-align: baseline;
+    text-align: inherit; text-decoration: inherit;
+    background-color: inherit; color: inherit; }
+
+:root
+{ --color-bg: white;
+  --color-bg-code: #F6F6F6 ;
+  --color-fg: black;
+  --color-marked: #ffe9b3;
+  --color-anchored: var(--color-marked);
+
+  --color-hover-link: #07a;
+  --color-hover-link-visited: #6696aa;
+
+  --font-body: serif;
+  --font-headings: sans-serif;
+  --font-mono: monospace;
+
+  --size-font-body: 1rem;
+
+  --ratio-line-body: 1.2;
+  --ratio-line-headings: var(--ratio-line-body);
+  --ratio-line-mono: var(--ratio-line-body);
+  --ratio-mono: 0.85;
+  --ratio-x-small: 0.75;
+  --ratio-small: 0.875;
+
+  --size-xx-small: calc(0.5 * var(--size-font-body));
+  --size-x-small: calc(var(--ratio-x-small) * var(--size-font-body));
+  --size-small: calc(var(--ratio-small) * var(--size-font-body));
+  --size-medium: var(--size-font-body);
+  --size-large: calc(1.25 * var(--size-font-body));
+  --size-x-large: calc(1.5 * var(--size-font-body));
+  --size-xx-large:  calc(2.25 * var(--size-font-body));
+
+  --size-one-line: calc(var(--ratio-line-body) * var(--size-font-body));
+  --size-two-lines: calc(2.0 * var(--size-one-line));
+  --size-half-line: calc(0.5 * var(--size-one-line));
+
+  --doc-h-min-margins: 2rem;
+  --doc-v-min-margins: 2rem;
+  --doc-max-width: 85ch;
+}
+
+/* Page geometry */
+
+html { max-width: 100%; max-height: 100%; overflow-x: hidden; }
+body
+{ max-width: var(--doc-max-width);
+  padding-left: var(--doc-h-min-margins);
+  padding-right: var(--doc-h-min-margins);
+  padding-top: var(--doc-v-min-margins);
+  padding-bottom: var(--doc-v-min-margins);
+  margin: 0 auto;
+  background-color: var(--color-bg-color);
+  color: var(--color-fg);
+  font-family: var(--font-body), serif;
+  font-size: var(--size-medium);
+  line-height: var(--ratio-line-body);
+  text-align: left; }
+
+/* Links and anchors. */
+
+/* Links and anchors. */
+
+a { text-decoration: underline;
+    text-decoration-thickness: 0.02em; text-underline-offset: 2px; }
+
+a:hover:visited { text-decoration-color: var(--color-hover-link); }
+a:hover
+{ text-decoration-color: var(--text-hover-visited-link);
+  text-decoration-thickness: 0.1em }
+
+a.anchor:before { content: "#" }
+a.anchor:hover { text-decoration: underline; }
+*:hover > a.anchor { visibility: visible }
+a.anchor
+{ visibility: hidden; position: absolute;
+  font-weight: normal; font-style: normal;
+  margin-left: -2.5ch;
+  padding-right: 1ch; padding-left: 1ch; /* To remain selectable */
+  color: var(--color-link-hover);
+  border: none; }
+
+*:target /* Anchored highlight */
+{ background-color: var(--color-anchored);
+  box-shadow: 0 0 0 3px var(--color-anchored) }
+
+/* Basic markup */
+
+h1, h2, h3, h4, h5, h6
+{ font-family: var(--font-headings), sans-serif; font-weight: bold;
+  margin-top: var(--size-one-line); margin-bottom: var(--size-half-line);
+  line-height: var(--ratio-line-headings); }
+
+h1 { font-size: var(--size-xx-large); text-transform: uppercase; }
+h2 { font-size: var(--size-x-large); }
+h3, h4, h5, h6 { font-size: var(--size-medium); }
+
+div, nav, p, ol, ul, dl, pre, table, blockquote
+{ margin-bottom: var(--size-half-line); }
+
+em { font-style: italic }
+b, strong { font-weight: bold }
+small { font-size: var(--size-small); }
+del { text-decoration: line-through }
+u { text-decoration: underline }
+var { font-style: italic }
+mark
+{ padding: 0.05rem 0.1rem 0;
+  border-bottom: 0.05rem solid var(--color-marked);
+  border-radius: 0.1rem;
+  background-color: var(--color-marked); }
+
+sup { top: -0.5em; }
+sub { bottom: -0.25em; }
+sup, sub
+{ font-size: calc(var(--ratio-x-small) * 1em);
+  line-height: 0; position: relative; vertical-align:baseline }
+
+cite { font-style: italic }
+blockquote footer { font-size: var(--size-small); }
+blockquote { margin-left: 2ex; padding-left: 2ex; font-style: italic }
+
+img
+{ display: block;
+  margin-top: var(--size-half-line); margin-bottom: var(--size-half-line); }
+
+th { font-weight: bold }
+
+/* Lists */
+
+ol, ul { padding-left: 0; margin-left: 0; list-style: none; }
+ol ol, ol ul, ul ol, ul ul { margin-left: 2ex; }
+ul li::before { content: "\2022"; margin-left: -1.6ex; padding-right: 1ex; }
+ol { counter-reset: ol; }
+ol li::before
+{ font-size: var(--size-x-small);
+  counter-increment: ol;
+  content: counter(ol); margin-left: -2ex; padding-right: 1ex; }
+
+/* Code and preformatted */
+
+code, kbd, samp, code, pre
+{ font-family: var(--font-mono), monospace,monopsace; /* prevent adjust ! */
+  font-size: calc(var(--ratio-mono) * 1em) }
+
+kbd
+{ font-size: calc(var(--ratio-small) * var(--ratio-mono) * 1em);
+  background-color: var(--color-fg); color: var(--color-bg);
+  line-height: 1.25;
+  padding: .1rem .2rem;
+  border-radius: .15rem; }
+
+
+pre { background: var(--color-bg-code);
+      line-height: var(--ratio-line-mono);
+      padding-left: 0.8ch; padding-right: 0.8ch;
+      margin-left: -0.8ch; margin-right: -0.8ch;
+      padding-top: 1ch; padding-bottom: 1ch;
+      white-space: pre-wrap; }
+
+/* Media adjustments */
+
+@media only screen and (min-width:160ch) /* and (min-height: 60rem) */
+{
+  :root { --size-font-body: 1.25rem; }
+}
+
+@media only screen and (max-width:80ch) { }
+@media print
+{
+  * { -webkit-print-color-adjust: exact; }
+}
+
+/*
+Copyright (c) 2020 The brzo programmers
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+*/
