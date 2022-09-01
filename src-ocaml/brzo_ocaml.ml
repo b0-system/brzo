@@ -470,7 +470,7 @@ let cobjs_incs objs =
   (* This may not work with library variant depending on how they
      are installed. FIXME test on a dune example. *)
   let add_inc acc o = Fpath.parent (Cobj.file o) :: acc in
-  Fpath.uniquify @@ List.rev (List.fold_left add_inc [] objs)
+  Fpath.distinct @@ List.rev (List.fold_left add_inc [] objs)
 
 let build_top b ~code ~top ~artefact =
   let in_dir = b.build_dir and oname = "brzo_top" in

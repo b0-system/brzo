@@ -192,7 +192,7 @@ let get_miss_deps_help r opam_pkgs miss_deps =
   in
   let resolver_deps = Mod_resolver.dep_dirs_deps r in
   let resolver_deps = List.rev_map Fpath.to_string resolver_deps in
-  let all_deps = String.uniquify (List.rev_append opam_pkgs resolver_deps) in
+  let all_deps = String.distinct (List.rev_append opam_pkgs resolver_deps) in
   let rec loop correct opam = function
   | [] -> correct, opam
   | dep :: deps ->
