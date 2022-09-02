@@ -140,11 +140,10 @@ body { background: #181B20; color: #8C8D90; }
 
   let toplevel_ui_src =
 {ocaml|
-open Js_of_ocaml
 open Js_of_ocaml_toplevel
+open Jsoo_runtime
 
 let () = (* Don't pollute the toplevel namespace *)
-
   let module History = struct
     type t = { prev : string list; focus : string; next : string list; }
     let v prev =
@@ -177,8 +176,18 @@ let () = (* Don't pollute the toplevel namespace *)
         Some ({ prev; focus = n; next = ns }, n)
   end
   in
-
   let module Toplevel = struct
+    let null = Js.pure_js_expr "null"
+    let window = Js.pure_js_expr "window"
+    let document = Js.pure_js_expr "document"
+    let el s = Js.meth_call document "createElement" [| Js.string s |]
+    let txt s = Js.meth_call document "createTextNode" [| s |]
+    let append_child e c = ignore (Js.meth_call e "appendChild" [|c|])
+    let insert_before e b c =  ignore (Js.meth_call e "insertBefore" [|b;c|])
+    let add_event_listener e ev cb =
+      ignore (Js.meth_call e "addEventListener"
+                [|Js.string ev; Js.wrap_callback cb|])
+
     let execute phrase =
       let buf = Buffer.create 100 in
       let ppf = Format.formatter_of_buffer buf in
@@ -186,7 +195,8 @@ let () = (* Don't pollute the toplevel namespace *)
 
     let export_js () = (* to be used in the browser console *)
       let exec s = Js.string (execute (Js.to_string s)) in
-      Js.export "ocaml" exec
+      Js.set (Js.pure_js_expr "jsoo_exports")
+        (Js.string "ocaml") (Obj.magic exec)
 
     let history_prev, history_next, history_save =
       let h = ref (History.v []) in
@@ -207,7 +217,7 @@ let () = (* Don't pollute the toplevel namespace *)
 
     let handle_text_input i print s =
       let line_count = List.length (String.split_on_char '\n' s) in
-      Js.Unsafe.set i "rows" (Js.string (string_of_int line_count));
+      Js.set i (Js.string "rows") (Js.string (string_of_int line_count));
       let len = String.length s in
       if len < 3 then false else
       match s.[len - 3] = ';' && s.[len - 2] = ';'  && s.[len - 1] = '\n' with
@@ -215,76 +225,78 @@ let () = (* Don't pollute the toplevel namespace *)
       | true -> history_save s; print ("# " ^ s); print (execute s); true
 
     let create () =
-      let txt s =
-        Js.Unsafe.(meth_call Dom_html.document "createTextNode" [| inject s |])
-      in
       let toplevel =
-        let t = Dom_html.(createDiv document) in
-        let () = Js.Unsafe.set t "id" (Js.string "ocaml") in
+        let t = el "div" in
+        let () = Js.set t (Js.string "id") (Js.string "ocaml") in
         t
       in
-      let prompt = Dom_html.(createDiv document) in
-      let print s =
-        let output = Dom_html.(createPre document) in
-        let () = Dom.appendChild output (txt (Js.string s)) in
-        Dom.insertBefore toplevel output (Js.Opt.return prompt);
+      let prompt = el "div" in
+      let print ~js_string:s =
+        let output = el "pre" in
+        let () = append_child output (txt s) in
+        insert_before toplevel output prompt
       in
       let input =
-        let i = Dom_html.(createTextarea document) in
-        let get_i () = Js.to_string (Js.Unsafe.get i "value") in
-        let set_i s = Js.Unsafe.set i "value" (Js.string s) in
+        let i = el "textarea" in
+        let get_i () = Js.to_string (Js.get i (Js.string "value")) in
+        let set_i s = Js.set i (Js.string "value") (Js.string s) in
         let oninput _ =
+          let print s = print ~js_string:(Js.string s) in
           if handle_text_input i print (get_i ()) then set_i "";
-          Js._false
+          Js.bool false
         in
         let onkeydown e =
-          let get_bool e f = Js.to_bool (Js.Unsafe.get e f) in
-          let (key : int) = Js.Unsafe.get e "keyCode" in
+          let get_bool e f = Js.to_bool (Js.get e (Js.string f)) in
+          let (key : int) = Obj.magic @@ Js.get e (Js.string "keyCode") in
           match get_bool e "ctrlKey" || get_bool e "metaKey" with
-          | false -> Js._true
+          | false -> Js.bool true
           | true ->
-            if key = 38 then (set_i (history_prev (get_i ())); Js._false) else
-            if key = 40 then (set_i (history_next (get_i ())); Js._false) else
-            Js._true
+              let f = Js.bool false in
+              if key = 38 then (set_i (history_prev (get_i ())); f) else
+              if key = 40 then (set_i (history_next (get_i ())); f) else
+              Js.bool true
         in
-        let () = Js.Unsafe.set i "cols" (Js.string "80") in
-        let () = Js.Unsafe.set i "rows" (Js.string "1") in
-        let () = Js.Unsafe.set i "autofocus" (Js.string "true") in
-        let () = Js.Unsafe.set i "spellcheck" Js.null in
-        let () = Js.Unsafe.set i "oninput" (Dom_html.handler oninput) in
-        let () = Js.Unsafe.set i "onkeydown" (Dom_html.handler onkeydown) in
+        let () = Js.set i (Js.string "cols") (Js.string "80") in
+        let () = Js.set i (Js.string "rows") (Js.string "1") in
+        let () = Js.set i (Js.string "autofocus") (Js.string "true") in
+        let () = Js.set i (Js.string "spellcheck") null in
+        let () = add_event_listener i "input" oninput in
+        let () = add_event_listener i "keydown" onkeydown in
         i
       in
       let pchar =
-        let span = Dom_html.(createSpan document) in
-        Dom.appendChild span (txt "# "); span
+        let span = el "span" in
+        append_child span (txt (Js.string "# ")); span
       in
-      let () = Dom.appendChild prompt pchar in
-      let () = Dom.appendChild prompt input in
-      let () = Dom.appendChild toplevel prompt in
-      Sys_js.set_channel_flusher stdout print;
-      Sys_js.set_channel_flusher stderr print;
+      let () = append_child prompt pchar in
+      let () = append_child prompt input in
+      let () = append_child toplevel prompt in
+      Sys.set_channel_output' stdout print;
+      Sys.set_channel_output' stderr print;
       let announce =
         String.concat ""
-          [ "        OCaml version "; Sys.ocaml_version;
-            " -- courtesy of js_of_ocaml "; Sys_js.js_of_ocaml_version; ]
+          [ "        OCaml version "; Stdlib.Sys.ocaml_version;
+            " -- courtesy of js_of_ocaml ";
+            (* See https://github.com/ocsigen/js_of_ocaml/issues/1236 *)
+            Js_of_ocaml.Sys_js.js_of_ocaml_version; ]
       in
+      let help = " \nUse {ctrl,meta}-{up,down} for history.\n\n" in
       JsooTop.initialize ();
-      print announce; print " \nUse {ctrl,meta}-{up,down} for history.\n\n";
+      print ~js_string:(Js.string announce);
+      print ~js_string:(Js.string help);
       toplevel
 
+    let setup () =
+      let setup _ =
+        let toplevel = create () in
+        export_js ();
+        append_child (Js.get document (Js.string "body")) toplevel;
+        Js.bool false
+      in
+      add_event_listener window "load" setup
   end
   in
-
-  let setup =
-    Dom_html.handler @@ fun _ ->
-    let toplevel = Toplevel.create () in
-    Toplevel.export_js ();
-    Dom.appendChild (Js.Unsafe.get Dom_html.document "body") toplevel;
-    Js._false
-  in
-  ignore (Dom_html.addEventListener Dom_html.window
-          Dom_html.Event.load setup Js._false)
+  Toplevel.setup ()
 |ocaml}
 end
 
