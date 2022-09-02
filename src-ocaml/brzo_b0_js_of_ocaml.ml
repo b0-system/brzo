@@ -21,9 +21,8 @@ module Js_of_ocaml = struct
     let js_of_ocaml = Memo.tool m tool in
     Memo.spawn m ~reads:[byte_exe; mod_names] ~writes:[o] @@
     js_of_ocaml Cmd.(atom "-o" %% (path o) %% more_args %
-                     "--toplevel" % "--no-runtime" %
-                     "--export" %% unstamp (path mod_names) %
-                     "+runtime.js" % "+toplevel.js" % "+dynlink.js" %%
+                     "--toplevel" % "--export" %% unstamp (path mod_names) %
+                     "+toplevel.js" % "+dynlink.js" %%
                      unstamp (path byte_exe))
 
   let link ?args:(more_args = Cmd.empty) m ~jss ~o =
