@@ -5,7 +5,7 @@
 
 (** LaTeX domain B0 helpers. *)
 
-open B00_std
+open B0_std
 open B00
 
 (** B0 LaTeX support. *)

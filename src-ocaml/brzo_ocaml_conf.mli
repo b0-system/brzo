@@ -5,7 +5,7 @@
 
 (** Brzo OCaml domain configuration. *)
 
-open B00_std
+open B0_std
 
 (** {1 OCaml configuration} *)
 

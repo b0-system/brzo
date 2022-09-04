@@ -7,7 +7,7 @@
 
 (** {1:resolver Resolver helpers} *)
 
-open B00_std
+open B0_std
 open B00
 open B00_ocaml
 open Brzo_b0_ocaml

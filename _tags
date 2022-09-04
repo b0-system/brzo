@@ -1,5 +1,5 @@
 true : bin_annot, safe_string
-true : package(cmdliner), package(b0.b00.std), package(b0.b00), \
+true : package(cmdliner), package(b0.std), package(b0.b00), \
        package(b0.b00.kit), package(compiler-libs.common)
 <src> : include
 <src-c> : include

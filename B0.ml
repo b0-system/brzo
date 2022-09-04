@@ -1,11 +1,10 @@
 open B0_kit.V000
-open B00_std
-open B00_std.Fut.Syntax
+open Fut.Syntax
 
 (* OCaml library names *)
 
 let cmdliner = B0_ocaml.libname "cmdliner"
-let b0_b00_std = B0_ocaml.libname "b0.b00.std"
+let b0_std = B0_ocaml.libname "b0.std"
 let b0_b00 = B0_ocaml.libname "b0.b00"
 let b0_b00_kit = B0_ocaml.libname "b0.b00.kit"
 let compiler_libs_common = B0_ocaml.libname "compiler-libs.common"
@@ -14,7 +13,7 @@ let compiler_libs_common = B0_ocaml.libname "compiler-libs.common"
 
 let brzo_tool =
   let requires =
-    [cmdliner; b0_b00_std; b0_b00; b0_b00_kit; compiler_libs_common]
+    [cmdliner; b0_std; b0_b00; b0_b00_kit; compiler_libs_common]
   in
   let ocaml_cond b =
     (* XXX for this to work we need a corresponding the mli (whatever

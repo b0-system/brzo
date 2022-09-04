@@ -5,7 +5,7 @@
 
 (** B0 [ocaml] support. *)
 
-open B00_std
+open B0_std
 open B00
 open B00_ocaml
 

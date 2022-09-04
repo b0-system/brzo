@@ -5,7 +5,7 @@
 
 (** C B0 helpers. *)
 
-open B00_std
+open B0_std
 open B00
 
 module Tool : sig
@@ -50,7 +50,7 @@ end
 module Compile : sig
   val c_to_o :
     ?post_exec:(B000.Op.t -> unit) -> ?k:(int -> unit) ->
-    ?args:B00_std.Cmd.t -> Memo.t -> deps:Fpath.t list -> c:Fpath.t ->
+    ?args:B0_std.Cmd.t -> Memo.t -> deps:Fpath.t list -> c:Fpath.t ->
     o:Fpath.t -> unit
   (** [c_to_o m ~deps ~c ~o] compiles [c] to the object file [o]
       assuming [c] depends on [deps]. *)
@@ -60,7 +60,7 @@ module Link : sig
 
   val exe :
     ?post_exec:(B000.Op.t -> unit) -> ?k:(int -> unit) ->
-    ?args:B00_std.Cmd.t -> Memo.t -> objs:Fpath.t list -> o:Fpath.t -> unit
+    ?args:B0_std.Cmd.t -> Memo.t -> objs:Fpath.t list -> o:Fpath.t -> unit
     (** [exe m ~args ~objs ~o] links the objects [objs] into executable [o]. *)
 end
 

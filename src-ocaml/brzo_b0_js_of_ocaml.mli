@@ -5,7 +5,7 @@
 
 (** B0 js_of_ocaml support. *)
 
-open B00_std
+open B0_std
 open B00
 
 (** [js_of_ocaml] compilation. *)
@@ -29,13 +29,13 @@ module Js_of_ocaml : sig
   (** [link m ~jss ~o] links the JavaScript files [jss] into [o]. *)
 
   val tty_glue :
-    exe:Fpath.t -> cwd:Fpath.t -> env:B00_std.Os.Env.t -> args:string list ->
+    exe:Fpath.t -> cwd:Fpath.t -> env:B0_std.Os.Env.t -> args:string list ->
     string
 
   val write_page :
     ?toplevel_css:bool ->
     ?generator:string -> ?lang:string -> ?scripts:string list ->
-    ?styles:string list -> ?title:string -> B00.Memo.t -> o:B00_std.Fpath.t ->
+    ?styles:string list -> ?title:string -> B00.Memo.t -> o:B0_std.Fpath.t ->
     unit
   (** [write_page m ~title ~o] writes to file [o] a full HTML document whose
       body contains only a {!B0_web.Htmlg.noscript} element that

@@ -10,7 +10,7 @@
     break the cyclic dependency by transforming {!Brzo_domain}s to
     {!Brzo.Pre_domain}s. *)
 
-open B00_std
+open B0_std
 
 (** {1:conf Configuration} *)
 

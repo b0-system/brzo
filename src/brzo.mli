@@ -5,7 +5,7 @@
 
 (** Basic definitions and domain helpers. *)
 
-open B00_std
+open B0_std
 
 (** Memo helpers. *)
 module Memo : sig

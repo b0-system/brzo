@@ -5,7 +5,7 @@
 
 (** Opam b0 helpers. *)
 
-open B00_std
+open B0_std
 open B00
 
 val tool : Tool.t

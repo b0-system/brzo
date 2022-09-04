@@ -3,8 +3,8 @@
    Distributed under the ISC license, see terms at the end of the file.
   ---------------------------------------------------------------------------*)
 
-open B00_std
-open B00_std.Fut.Syntax
+open B0_std
+open Fut.Syntax
 open B00
 open Brzo_b0_c
 
@@ -35,7 +35,7 @@ module Conf = struct
   let doxyfile c = c.doxyfile
   let use_dot c = c.use_dot
 
-  let tid : t B00_std.Tid.t = Tid.v ()
+  let tid : t B0_std.Tid.t = Tid.v ()
   let docs = Brzo.Cli.s_outcome_opts
 
   let doxyfile_key = "doxyfile"

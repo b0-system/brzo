@@ -5,7 +5,7 @@
 
 (** Brzo domains. *)
 
-open B00_std
+open B0_std
 
 (** {1:domain Domains} *)
 

@@ -3,7 +3,7 @@
    Distributed under the ISC license, see terms at the end of the file.
   ---------------------------------------------------------------------------*)
 
-open B00_std
+open B0_std
 
 let root c =
   Log.app (fun m -> m "%a" Fpath.pp_unquoted (Brzo.Conf.root c));

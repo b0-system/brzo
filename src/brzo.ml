@@ -3,12 +3,12 @@
    Distributed under the ISC license, see terms at the end of the file.
   ---------------------------------------------------------------------------*)
 
-open B00_std
+open B0_std
 open B00_serialk_sexp
 
 module Memo = struct
 
-  open B00_std.Fut.Syntax
+  open B0_std.Fut.Syntax
 
   let copy_file m ~src_root ~dst_root src =
     let dst = Fpath.reroot ~root:src_root ~dst:dst_root src in
@@ -540,9 +540,9 @@ module Conf_setup = struct
       ~outcome_name ~outcome_mode ~pdf_viewer ~root ~srcs_i ~srcs_x ~tty_cap
       ~www_browser ~all_domains ~domain ()
     =
-    let tty_cap = B00_cli.B00_std.get_tty_cap tty_cap in
-    let log_level = B00_cli.B00_std.get_log_level log_level in
-    B00_cli.B00_std.setup tty_cap log_level ~log_spawns:Log.Debug;
+    let tty_cap = B00_cli.B0_std.get_tty_cap tty_cap in
+    let log_level = B00_cli.B0_std.get_log_level log_level in
+    B00_cli.B0_std.setup tty_cap log_level ~log_spawns:Log.Debug;
     let set_cwd = match cwd with None -> Ok () | Some c -> Os.Dir.set_cwd c in
     Result.bind set_cwd @@ fun () ->
     Result.bind (Os.Dir.cwd ()) @@ fun cwd ->
@@ -656,7 +656,7 @@ module Cli = struct
     B00_cli.Memo.log_file ~docs ~doc_none ~env ()
 
   let log_level =
-    B00_cli.B00_std.log_level ~docs ~env:(Cmd.Env.info "BRZO_VERBOSITY") ()
+    B00_cli.B0_std.log_level ~docs ~env:(Cmd.Env.info "BRZO_VERBOSITY") ()
 
   let no_pager = B00_pager.don't ~docs ()
   let pdf_viewer = B00_pdf_viewer.pdf_viewer ~docs ()
@@ -684,7 +684,7 @@ module Cli = struct
     Arg.(value & opt_all fpath [] & info ["x"; "srcs-x"] ~doc ~docv ~docs)
 
   let tty_cap =
-    B00_cli.B00_std.tty_cap ~docs ~env:(Cmd.Env.info "BRZO_COLOR") ()
+    B00_cli.B0_std.tty_cap ~docs ~env:(Cmd.Env.info "BRZO_COLOR") ()
 
   (* Domain specific cli *)
 
