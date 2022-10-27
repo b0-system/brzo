@@ -95,6 +95,16 @@ fails in some way before it gets to execute it. In the latter case the
 exit code should be attributed and understood as [brzo]'s one. Exit
 codes of [brzo] and its subcommands are documented in [brzo --help].
 
+An alternative way of executing the build outcome is to only build it
+with option [-b] and request its path to be printed at the end of the
+build with option [--path]. This is useful if you want to time the
+execution of an up-to-date outcome without timing the build:
+
+{v
+time brzo -- 'Quick'   # we are timing the build and the execution here
+time $(brzo -b --path) 'Quick'   # this only times the execution
+v}
+
 To only build the outcome, only perform the outcome action, locate the
 outcome artefact in the file system, delete the outcome build or see
 the outcome configuration, use the following invocations:
@@ -102,7 +112,7 @@ the outcome configuration, use the following invocations:
 {v
 brzo -b               # only build the outcome artefact
 brzo -r -- 'Quick!'   # only run the outcome action (no build)
-brzo --path           # path to the outcome artefact (built or not)
+brzo --show-path      # path to the outcome artefact (built or not)
 brzo -d               # delete the outcome build (but not the cache)
 brzo --conf           # show determined configuration
 v}

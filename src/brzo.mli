@@ -284,9 +284,9 @@ module Conf : sig
     domain_name:string option -> domain_confs:domain list ->
     hash_fun:(module Hash.T) -> jobs:int -> log_file:Fpath.t ->
     log_level:Log.level -> no_pager:bool -> outcome_mode:outcome_mode ->
-    pdf_viewer:Cmd.t option -> root:Fpath.t -> srcs_i:Fpath.Set.t ->
-    srcs_x:Fpath.Set.t -> tty_cap:Tty.cap -> www_browser:Cmd.t option ->
-    unit -> t
+    output_outcome_path:bool -> pdf_viewer:Cmd.t option -> root:Fpath.t ->
+    srcs_i:Fpath.Set.t -> srcs_x:Fpath.Set.t -> tty_cap:Tty.cap ->
+    www_browser:Cmd.t option -> unit -> t
   (** [v] constructs a configuration with given attributes. See the
       accessors for semantics. *)
 
@@ -342,6 +342,10 @@ module Conf : sig
 
   val outcome_mode : t -> outcome_mode
   (** [outcome] is the build outcome mode. *)
+
+  val output_outcome_path : t -> bool
+  (** [output_outcome_path] is [true] if the outcome path should be
+      output at the end of the build. *)
 
   val root : t -> Fpath.t
   (** [root] is absolute path to the brzo root. *)

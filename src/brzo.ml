@@ -277,6 +277,7 @@ module Conf = struct
       memo : (B00.Memo.t, string) result Lazy.t;
       no_pager : bool;
       outcome_mode : outcome_mode;
+      output_outcome_path : bool;
       pdf_viewer : Cmd.t option;
       root : Fpath.t;
       srcs : (B00_fexts.map, string) result Lazy.t;
@@ -288,15 +289,16 @@ module Conf = struct
   let v
       ~action_args ~background ~b0_dir ~brzo_file ~cache_dir ~cwd ~domain_name
       ~domain_confs ~hash_fun ~jobs ~log_file ~log_level ~no_pager
-      ~outcome_mode ~pdf_viewer ~root ~srcs_i ~srcs_x ~tty_cap ~www_browser ()
+      ~outcome_mode ~output_outcome_path ~pdf_viewer ~root ~srcs_i ~srcs_x
+      ~tty_cap ~www_browser ()
     =
     let trash_dir = Fpath.(b0_dir / B00_cli.Memo.trash_dir_name) in
     let srcs = lazy (collect_srcs ~srcs_i ~srcs_x) in
     let memo = lazy (Memo.create ~hash_fun ~cwd ~cache_dir ~trash_dir ~jobs) in
     { action_args; background; b0_dir; brzo_file; cache_dir; cwd; domain_name;
       domain_confs; hash_fun; jobs; log_file; log_level; memo; no_pager;
-      outcome_mode; pdf_viewer; root; srcs_i; srcs_x; srcs; tty_cap;
-      www_browser; }
+      outcome_mode; output_outcome_path; pdf_viewer; root; srcs_i; srcs_x;
+      srcs; tty_cap; www_browser; }
 
   let action_args c = c.action_args
   let background c = c.background
@@ -321,6 +323,7 @@ module Conf = struct
   let log_level c = c.log_level
   let memo c = Lazy.force c.memo
   let outcome_mode c = c.outcome_mode
+  let output_outcome_path c = c.output_outcome_path
   let no_pager c = c.no_pager
   let pdf_viewer c = c.pdf_viewer
   let root c = c.root
@@ -346,6 +349,7 @@ module Conf = struct
         Fmt.field "log-file" log_file Fpath.pp_quoted;
         Fmt.field "no-pager" no_pager Fmt.bool;
         Fmt.field "outcome-mode" outcome_mode pp_outcome_mode;
+        Fmt.field "output-outcome-path" output_outcome_path Fmt.bool;
         Fmt.field "pdf-viewer" pdf_viewer (pp_auto Cmd.pp);
         Fmt.field "root" root Fpath.pp_quoted;
         Fmt.field "srcs-i" srcs_i (Fmt.vbox Fpath.(Set.pp pp_quoted));
@@ -497,7 +501,7 @@ module Conf_setup = struct
     let modes =
       String.Map.of_list
         [ "action", `Action; "build", `Build; "conf", `Conf; "delete", `Delete;
-          "normal", `Normal; "path", `Path; ]
+          "normal", `Normal; "show-path", `Path; ]
     in
     let mode = Sexpq.(atomic (enum_map ~kind modes)) in
     Sexpq.key outcome_mode_key ~absent:`Normal mode
@@ -537,8 +541,9 @@ module Conf_setup = struct
   let with_cli
       ~auto_cwd_root ~use_brzo_file ~action_args ~background ~b0_dir
       ~brzo_file ~cache_dir ~cwd ~hash_fun ~jobs ~log_file ~log_level ~no_pager
-      ~outcome_name ~outcome_mode ~pdf_viewer ~root ~srcs_i ~srcs_x ~tty_cap
-      ~www_browser ~all_domains ~domain ()
+      ~outcome_name ~outcome_mode ~output_outcome_path
+      ~pdf_viewer ~root ~srcs_i ~srcs_x ~tty_cap ~www_browser ~all_domains
+      ~domain ()
     =
     let tty_cap = B00_cli.B0_std.get_tty_cap tty_cap in
     let log_level = B00_cli.B0_std.get_log_level log_level in
@@ -564,8 +569,8 @@ module Conf_setup = struct
     let jobs = B00_cli.Memo.get_jobs ~jobs in
     Ok (Conf.v ~action_args ~background ~b0_dir ~brzo_file ~cache_dir ~cwd
           ~domain_name ~domain_confs ~hash_fun ~jobs ~log_file ~log_level
-          ~no_pager ~outcome_mode ~pdf_viewer ~root ~srcs_i ~srcs_x ~tty_cap
-          ~www_browser ())
+          ~no_pager ~outcome_mode ~output_outcome_path ~pdf_viewer ~root
+          ~srcs_i ~srcs_x ~tty_cap ~www_browser ())
 end
 
 module Cli = struct
@@ -630,9 +635,18 @@ module Cli = struct
         m `Delete ["d"; "delete"] "Delete the outcome build.";
         m `Normal ["a"; "normal"]
           "Build outcome and perform the action (default).";
-        m `Path ["path"] "Only show the path to the outcome artefact." ]
+        m `Path ["show-path"] "Only show the path to the outcome artefact." ]
     in
     Arg.(value & vflag None modes)
+
+  let output_outcome_path =
+    let docs = s_outcome_mode in
+    let doc =
+      "On successful build with $(b,-b), output the outcome artefact path on \
+       $(b,stdout). For example for timing an outcome execution without \
+       timing the build: $(b,time \\$(brzo -b --path)) $(i,ARG)…"
+    in
+    Arg.(value & flag & info ["path"] ~doc ~docs)
 
   let root =
     let doc =
@@ -701,6 +715,9 @@ module Cli = struct
     Arg.value (Arg.vflag None (List.fold_left add [] D.pre_outcomes))
 
   let outcome_mode = function None -> tnone | Some _ -> outcome_mode
+  let output_outcome_path = function
+  | None -> Term.const false | Some _ -> output_outcome_path
+
   let action_args = function None -> Term.const [] | Some _ -> action_args
   let domain_cli_conf = function
   | None -> tnone
@@ -714,25 +731,28 @@ module Cli = struct
   let conf ~auto_cwd_root ~use_brzo_file ~domain ~all_domains =
     let c
         action_args b0_dir background brzo_file cache_dir cwd hash_fun jobs
-        log_file log_level no_pager outcome_name outcome_mode pdf_viewer root
-        srcs_i srcs_x tty_cap www_browser domain
+        log_file log_level no_pager outcome_name outcome_mode
+        output_outcome_path pdf_viewer root srcs_i srcs_x tty_cap www_browser
+        domain
       =
       Result.map_error (fun s -> `Msg s) @@
       Conf_setup.with_cli
         ~auto_cwd_root ~use_brzo_file ~action_args ~background ~b0_dir
         ~brzo_file ~cache_dir ~cwd ~hash_fun ~jobs ~log_file ~log_level
-        ~no_pager ~outcome_name ~outcome_mode ~pdf_viewer ~root ~srcs_i
-        ~srcs_x ~tty_cap ~www_browser ~all_domains ~domain ()
+        ~no_pager ~outcome_name ~outcome_mode ~output_outcome_path ~pdf_viewer
+        ~root ~srcs_i ~srcs_x ~tty_cap ~www_browser ~all_domains ~domain ()
     in
     let outcome_name = outcome_name domain in
     let outcome_mode = outcome_mode domain in
+    let output_outcome_path = output_outcome_path domain in
     let action_args = action_args domain in
     let domain_cli_conf = domain_cli_conf domain in
     Term.term_result @@
     Term.(const c $ action_args $ b0_dir $ background $ brzo_file $ cache_dir $
           cwd $ hash_fun $ jobs $ log_file $ log_level $ no_pager $
-          outcome_name $ outcome_mode $ pdf_viewer $ root $ srcs_i $ srcs_x $
-          tty_cap $ www_browser $ domain_cli_conf)
+          outcome_name $ outcome_mode $ output_outcome_path $
+          pdf_viewer $ root $ srcs_i $ srcs_x $ tty_cap $ www_browser $
+          domain_cli_conf)
 end
 
 (*---------------------------------------------------------------------------

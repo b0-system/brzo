@@ -91,6 +91,8 @@ let build_mode c domain m () =
   let* build_dir = build_dir domain o m c dc in
   let* artefact = (Brzo_outcome.artefact o) m c dc ~build_dir in
   let* () = run_outcome_build o m c dc ~build_dir ~artefact in
+  if Brzo.Conf.output_outcome_path c
+  then Log.app (fun m -> m "%a" Fpath.pp_unquoted artefact);
   Fut.return (`Exit Brzo.Exit.ok)
 
 let normal_mode c domain m () =
