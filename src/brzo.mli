@@ -102,7 +102,7 @@ module Pre_domain : sig
     type t
     (** The type for domain specific configurations. *)
 
-    val tid : t Tid.t
+    val tid : t Type.Id.t
     (** [tid] is a type identifier for the configuration. *)
 
     val keys : String.Set.t

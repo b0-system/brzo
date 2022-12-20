@@ -24,7 +24,7 @@ module Conf = struct
         Fmt.field "main" main (Brzo.Conf.pp_auto Fpath.pp_quoted);
         Fmt.field "doi-resolver" doi_resolver Fmt.string; ]
 
-  let tid : t Tid.t = Tid.v ()
+  let tid : t Type.Id.t = Type.Id.make ()
   let docs = Brzo.Cli.s_outcome_opts
 
   let curl_key = "curl"

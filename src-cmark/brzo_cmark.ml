@@ -9,7 +9,7 @@ open B00
 
 module Conf = struct
   type t = unit
-  let tid = Tid.v ()
+  let tid = Type.Id.make ()
   let conf_get _ = Ok ()
   let keys = String.Set.empty
   let parse = conf_get

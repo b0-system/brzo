@@ -40,7 +40,7 @@ let pp =
       Fmt.field "libs" libs (Fmt.vbox (Fmt.list Fpath.pp_quoted));
       Fmt.field "lock-libs" lock_libs Fmt.bool; ]
 
-let tid = Tid.v ()
+let tid = Type.Id.make ()
 let docs = Brzo.Cli.s_outcome_opts
 
 let target_key = "target"

@@ -112,7 +112,7 @@ module Pre_domain = struct
 
   module type CONF = sig
     type t
-    val tid : t Tid.t
+    val tid : t Type.Id.t
     val keys : String.Set.t
     val parse :
       B00_serialk_sexp.Sexp.t * B00_serialk_sexp.Sexpq.path ->
@@ -312,8 +312,8 @@ module Conf = struct
     let rec find : domain list -> (string * a) option = function
     | [] -> None
     | Domain ((module D'), outcome, v) :: confs ->
-        match Tid.equal D.Conf.tid D'.Conf.tid with
-        | None -> find confs | Some Tid.Eq -> Some (outcome, v)
+        match Type.Id.provably_equal D.Conf.tid D'.Conf.tid with
+        | None -> find confs | Some Type.Equal -> Some (outcome, v)
     in
     find c.domain_confs
 
@@ -459,8 +459,8 @@ module Conf_setup = struct
         let rec loop acc = function
         | [] -> acc
         | (Pre_domain.V (module D') as dv) :: ds ->
-            match Tid.equal D'.Conf.tid D.Conf.tid with
-            | Some Tid.Eq -> loop (dom :: acc) ds
+            match Type.Id.provably_equal D'.Conf.tid D.Conf.tid with
+            | Some Type.Equal -> loop (dom :: acc) ds
             | None ->
                 loop (parse_domain_conf ~outcome_name:None sexp dv :: acc) ds
         in

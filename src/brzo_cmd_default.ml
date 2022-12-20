@@ -11,7 +11,7 @@ open B0_std
 module Default = struct
   module Conf = struct
     type t = unit
-    let tid = Tid.v ()
+    let tid = Type.Id.make ()
     let get _ = Ok ()
     let keys = String.Set.empty
     let parse = get
