@@ -368,12 +368,12 @@ module Conf_setup = struct
   let err_no_root ~cwd =
     let create = Fmt.str (if Sys.win32 then "type NUL >> %s" else "touch %s") in
     let bold = Fmt.(code string) in
-    let red = Fmt.(tty [`Fg `Red] string) in
+    let red = Fmt.(tty [`Bold; `Fg `Red] string) in
     Fmt.error
-      "@[<v>[%a] @[<v>No %a file found in %a@,\
+      "@[<v>%a: @[<v>No %a file found in %a@,\
        or upwards. To %a from this directory use option %a or@,\
        invoke %a to mark the root.@]@]"
-      red "ERROR" bold Conf.brzo_file_name bold (Fpath.to_string cwd)
+      red "Error" bold Conf.brzo_file_name bold (Fpath.to_string cwd)
       bold "brzo" bold "--root ." bold (create Conf.brzo_file_name)
 
   let find_root_and_brzo_file ~auto_cwd_root ~cwd ~root ~brzo_file =
