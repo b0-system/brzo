@@ -10,7 +10,7 @@ let exts_of_doms = function
 | [] -> Ok None
 | doms ->
     let add_domain acc d =
-      let d = Result.to_failure (Brzo_domain.find d Brzo_domain_list.v) in
+      let d = Result.error_to_failure (Brzo_domain.find d Brzo_domain_list.v) in
       String.Set.union (Brzo_domain.fingerprint d) acc
     in
     try Ok (Some (List.fold_left add_domain String.Set.empty doms)) with
@@ -20,8 +20,8 @@ let sources c doms =
   Log.if_error ~use:Brzo.Exit.undefined_domain @@
   let* exts = exts_of_doms doms in
   Log.if_error' ~use:Brzo.Exit.some_error @@
-  let* pager = B00_pager.find ~don't:(Brzo.Conf.no_pager c) () in
-  let* () = B00_pager.page_stdout pager in
+  let* pager = B0_pager.find ~don't:(Brzo.Conf.no_pager c) () in
+  let* () = B0_pager.page_stdout pager in
   let* src_by_exts = Brzo.Conf.srcs c in
   let srcs =
     let add_files ext srcs acc = match exts with
@@ -44,7 +44,7 @@ open Cmdliner
 let cmd =
   let doc = "Show source files" in
   let exits = Brzo.Exit.Info.undefined_domain :: Brzo.Exit.Info.base_cmd in
-  let envs = B00_pager.envs () in
+  let envs = B0_pager.Env.infos in
   let man = [
     `S Manpage.s_description;
     `P "The $(tname) command lists the source files considered by a $(mname) \

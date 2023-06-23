@@ -5,23 +5,23 @@
 
 open B0_std
 open B0_std.Fut.Syntax
-open B00
-open B00_ocaml
 
 type t =
   { file : Fpath.t;
-    mod_ref : Mod.Ref.t;
-    mod_names : Mod.Name.Set.t;
-    deps : Mod.Ref.Set.t }
+    mod_ref : B0_ocaml.Mod.Ref.t;
+    mod_names : B0_ocaml.Mod.Name.Set.t;
+    deps : B0_ocaml.Mod.Ref.Set.t }
 
 let read m file =
-  let* () = Memo.wait_files m [file] in
+  let* () = B0_memo.wait_files m [file] in
   let name, digest, mod_names, deps =
-    Brzo_read_cmi.read file |> Memo.fail_if_error m
+    Brzo_read_cmi.read file |> B0_memo.fail_if_error m
   in
-  let mod_ref = Mod.Ref.v name digest in
-  let add_dep acc (n, d) = Mod.Ref.Set.add (Mod.Ref.v n d) acc in
-  let deps = List.fold_left add_dep Mod.Ref.Set.empty deps in
+  let mod_ref = B0_ocaml.Mod.Ref.v name digest in
+  let add_dep acc (n, d) =
+    B0_ocaml.Mod.Ref.Set.add (B0_ocaml.Mod.Ref.v n d) acc
+  in
+  let deps = List.fold_left add_dep B0_ocaml.Mod.Ref.Set.empty deps in
   Fut.return { file; mod_ref; mod_names; deps }
 
 let file cmi = cmi.file
@@ -29,7 +29,7 @@ let mod_ref cmi = cmi.mod_ref
 let mod_names cmi = cmi.mod_names
 let deps cmi = cmi.deps
 let pp ppf cmi =
-  Fmt.pf ppf "%a %a" Mod.Ref.pp cmi.mod_ref Fpath.pp_quoted cmi.file
+  Fmt.pf ppf "%a %a" B0_ocaml.Mod.Ref.pp cmi.mod_ref Fpath.pp_quoted cmi.file
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2019 The brzo programmers

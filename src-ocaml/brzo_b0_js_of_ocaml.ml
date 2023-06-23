@@ -4,31 +4,30 @@
   ---------------------------------------------------------------------------*)
 
 open B0_std
-open B00
 
 module Js_of_ocaml = struct
   let env_vars = [ "BUILD_PATH_PREFIX_MAP" ]
-  let tool = Tool.by_name ~vars:env_vars "js_of_ocaml"
+  let tool = B0_memo.Tool.by_name ~vars:env_vars "js_of_ocaml"
 
-  let link_tool = Tool.by_name ~vars:env_vars "jsoo_link"
+  let link_tool = B0_memo.Tool.by_name ~vars:env_vars "jsoo_link"
 
   let compile ?args:(more_args = Cmd.empty) m ~byte_exe ~o =
-    let js_of_ocaml = Memo.tool m tool in
-    Memo.spawn m ~reads:[byte_exe] ~writes:[o] @@
-    js_of_ocaml Cmd.(atom "-o" %% (path o) %% more_args %% path byte_exe)
+    let js_of_ocaml = B0_memo.tool m tool in
+    B0_memo.spawn m ~reads:[byte_exe] ~writes:[o] @@
+    js_of_ocaml Cmd.(arg "-o" %% (path o) %% more_args %% path byte_exe)
 
   let compile_toplevel ?args:(more_args = Cmd.empty) m ~byte_exe ~mod_names ~o =
-    let js_of_ocaml = Memo.tool m tool in
-    Memo.spawn m ~reads:[byte_exe; mod_names] ~writes:[o] @@
-    js_of_ocaml Cmd.(atom "-o" %% (path o) %% more_args %
+    let js_of_ocaml = B0_memo.tool m tool in
+    B0_memo.spawn m ~reads:[byte_exe; mod_names] ~writes:[o] @@
+    js_of_ocaml Cmd.(arg "-o" %% (path o) %% more_args %
                      "--toplevel" % "--export" %% unstamp (path mod_names) %
                      "+toplevel.js" % "+dynlink.js" %%
                      unstamp (path byte_exe))
 
   let link ?args:(more_args = Cmd.empty) m ~jss ~o =
-    let jsoo_link = Memo.tool m link_tool in
-    Memo.spawn m ~reads:jss ~writes:[o] @@
-    jsoo_link Cmd.(atom "-o" %% (path o) %% more_args %% paths jss)
+    let jsoo_link = B0_memo.tool m link_tool in
+    B0_memo.spawn m ~reads:jss ~writes:[o] @@
+    jsoo_link Cmd.(arg "-o" %% (path o) %% more_args %% paths jss)
 
   let js_escape =
     let char_len = function '\\' | '"' | '\n' | '\r' -> 2 | _ -> 1 in
@@ -123,8 +122,8 @@ body { background: #181B20; color: #8C8D90; }
         (string_of_bool toplevel_css :: generator :: lang :: title ::
          List.rev_append styles scripts)
     in
-    Memo.write m ~stamp o @@ fun () ->
-    let open B00_htmlg in
+    B0_memo.write m ~stamp o @@ fun () ->
+    let open B0_html in
     let body =
       let sorry = "Sorry, you need to enable JavaScript to see this page." in
       El.(body [noscript [txt sorry]])

@@ -5,14 +5,13 @@
 
 open B0_std
 open B0_std.Fut.Syntax
-open B00
-open B00_serialk_sexp
+open B0_sexp
 open Brzo_b0_latex
 
 module Conf = struct
   type t =
     { curl : Cmd.t;
-      doi_resolver : B00_http.Uri.t;
+      doi_resolver : B0_http.Url.t;
       main : Fpath.t option; }
 
   let curl c = c.curl
@@ -31,9 +30,9 @@ module Conf = struct
   let curl_c =
     Brzo.Conf.Bit.with_cli_arg curl_key
       ~doc:"Use $(docv) to curl" ~docv:"CMD" ~docs
-      ~absent:(Cmd.atom "curl")
+      ~absent:(Cmd.arg "curl")
       ~conf:Sexpq.(map Cmd.list (list atom))
-      ~arg:Cmdliner.Arg.(opt (some ~none:"curl" B00_cli.cmd) None)
+      ~arg:Cmdliner.Arg.(opt (some ~none:"curl" B0_cli.cmd) None)
 
   let doi_resolver_key = "doi-resolver"
   let doi_resolver_c =
@@ -52,7 +51,7 @@ module Conf = struct
       ~absent:None
       ~conf:Sexpq.(some (atomic Brzo.Sexp.fpath))
       ~arg:Cmdliner.Arg.(opt (some ~none:"guessed"
-                                (some B00_cli.fpath)) None)
+                                (some B0_cli.fpath)) None)
 
   let get_conf curl doi_resolver main sexp =
     Result.bind (Brzo.Conf.Bit.get curl_c curl sexp) @@ fun curl ->
@@ -70,19 +69,19 @@ end
 
 let name = "latex"
 let doc_name = "LaTeX"
-let fingerprint = B00_fexts.latex_lang
+let fingerprint = B0_file_exts.latex_lang
 
 (* Outcomes *)
 
 let bibdoi_to_bib m c dc bibdoi =
   let bib = Fpath.(bibdoi -+ ".bib") in
-  let httpr = B00_http.Httpr.get_curl ~curl:dc.Conf.curl () in
+  let httpr = B0_http.Http_client.get ~curl:dc.Conf.curl () in
   begin
-    Memo.file_ready m bibdoi;
+    B0_memo.file_ready m bibdoi;
     ignore @@
-    let* contents = Memo.read m bibdoi in
+    let* contents = B0_memo.read m bibdoi in
     begin
-      Memo.write m ~stamp:"%%VERSION%%" ~reads:[bibdoi] bib @@ fun () ->
+      B0_memo.write m ~stamp:"%%VERSION%%" ~reads:[bibdoi] bib @@ fun () ->
       Result.bind (Bibdoi.of_string ~file:bibdoi contents) @@ fun b ->
       Result.bind httpr @@ fun r ->
       (* We should memoize each curl invocation *)
@@ -94,7 +93,7 @@ let bibdoi_to_bib m c dc bibdoi =
 
 let find_main m c dc ~texs =
   let not_found m =
-    Memo.fail m
+    B0_memo.fail m
       "@[<v>Could not detect a main tex file.@, Use %a to specify one.@]"
       Fmt.(code string) "--main"
   in
@@ -104,7 +103,8 @@ let find_main m c dc ~texs =
     | [] -> None
     | [t] -> Some t
     | t :: _ ->
-        Memo.notify m `Warn "@[<v>Found multiple %a sources using:@,%a@]"
+        B0_memo.notify
+          m `Warn "@[<v>Found multiple %a sources using:@,%a@]"
           Fmt.(code string) name Fpath.pp_quoted t;
         Some t
   in
@@ -112,7 +112,7 @@ let find_main m c dc ~texs =
   | Some main ->
       let main = Fpath.(Brzo.Conf.root c // main) in
       if List.mem main texs then Fut.return main else
-      Memo.fail m "Main file %a not found in %a sources."
+      B0_memo.fail m "Main file %a not found in %a sources."
         Fmt.(code Fpath.pp_unquoted) main Fmt.(code string) ".tex"
   | None ->
       match texs with
@@ -141,21 +141,21 @@ let find_main m c dc ~texs =
 
 
 let exec_build m c dc ~build_dir ~artefact ~srcs =
-  let stys = B00_fexts.(find_files (ext ".sty") srcs) in
-  let texs = B00_fexts.(find_files tex srcs) in
-  let bibs = B00_fexts.(find_files (ext ".bib") srcs) in
-  let bibdois = B00_fexts.(find_files (ext ".bibdoi") srcs) in
+  let stys = B0_file_exts.(find_files (ext ".sty") srcs) in
+  let texs = B0_file_exts.(find_files tex srcs) in
+  let bibs = B0_file_exts.(find_files (ext ".bib") srcs) in
+  let bibdois = B0_file_exts.(find_files (ext ".bibdoi") srcs) in
   let doibibs = List.rev_map (bibdoi_to_bib m c dc) bibdois in
   let* main = find_main m c dc ~texs in
-  let xelatex = Memo.tool m Tool.xelatex in
+  let xelatex = B0_memo.tool m Tool.xelatex in
   let _aux = Fpath.(artefact -+ ".aux") in
   let _toc = Fpath.(artefact -+ ".toc") in
   let _out = Fpath.(artefact -+ ".out") in
-  List.iter (Memo.file_ready m) stys;
-  List.iter (Memo.file_ready m) texs;
-  List.iter (Memo.file_ready m) bibs;
+  List.iter (B0_memo.file_ready m) stys;
+  List.iter (B0_memo.file_ready m) texs;
+  List.iter (B0_memo.file_ready m) bibs;
   let cli =
-    Cmd.(atom "-file-line-error" % "-halt-on-error" %
+    Cmd.(arg "-file-line-error" % "-halt-on-error" %
          "-interaction=nonstopmode" %
          "-output-directory" %% path build_dir %
          "-jobname" % Fpath.basename ~no_ext:true artefact %%
@@ -165,8 +165,8 @@ let exec_build m c dc ~build_dir ~artefact ~srcs =
     List.(rev_append (rev_append bibs doibibs) (rev_append texs stys))
   in
   (* FIXME fixpoint *)
-  let k _ = Os.Cmd.run Cmd.(atom "xelatex" %% cli) |> Result.get_ok in
-  Memo.spawn m ~k ~reads ~writes:[] @@
+  let k _ = Os.Cmd.run Cmd.(arg "xelatex" %% cli) |> Result.get_ok in
+  B0_memo.spawn m ~k ~reads ~writes:[] @@
   xelatex cli;
   Fut.return ()
 
@@ -301,10 +301,10 @@ let latex_src_chapter = format_of_string
 |latex}
 
 let langs =
-  [ B00_fexts.c_lang, "language=C";
-    B00_fexts.css, "language=CSS";
-    B00_fexts.js, "language=JavaScript";
-    B00_fexts.(ocaml_lang - ext ".mld"), "style=ocaml"; ]
+  [ B0_file_exts.c_lang, "language=C";
+    B0_file_exts.css, "language=CSS";
+    B0_file_exts.js, "language=JavaScript";
+    B0_file_exts.(ocaml_lang - ext ".mld"), "style=ocaml"; ]
 
 let supported_srcs =
   let add_exts acc (exts, _) = String.Set.union acc exts in
@@ -335,7 +335,7 @@ let write_listing m ~src_root srcs ~o =
       [ string_of_format latex_srcs_doc;
         string_of_format latex_src_chapter]
   in
-  Memo.write m ~stamp ~reads:srcs o @@ fun () -> Ok doc
+  B0_memo.write m ~stamp ~reads:srcs o @@ fun () -> Ok doc
 
 let listings_artefact m c _ ~build_dir =
   let src_root = Brzo.Conf.root c in
@@ -352,23 +352,23 @@ let sort_src_paths p0 p1 =
   | ext0, ext1 -> String.compare ext0 ext1
 
 let listing_build m c _ ~build_dir ~artefact ~srcs =
-  let srcs = B00_fexts.(find_files supported_srcs srcs) in
+  let srcs = B0_file_exts.(find_files supported_srcs srcs) in
   let srcs = List.sort sort_src_paths srcs in
   let src_root = Brzo.Conf.root c in
-  let xelatex = Memo.tool m Tool.xelatex in
+  let xelatex = B0_memo.tool m Tool.xelatex in
   let doc_file = Fpath.(artefact -+ ".tex") in
   let aux = Fpath.(artefact -+ ".aux") in
   let toc = Fpath.(artefact -+ ".toc") in
   let out = Fpath.(artefact -+ ".out") in
-  List.iter (Memo.file_ready m) srcs;
+  List.iter (B0_memo.file_ready m) srcs;
   write_listing m ~src_root srcs ~o:doc_file;
-  let cli = Cmd.(atom "-file-line-error" % "-halt-on-error" %
+  let cli = Cmd.(arg "-file-line-error" % "-halt-on-error" %
                  "-interaction=nonstopmode" %
                  "-output-directory" %% path build_dir %% path doc_file)
   in
   (* FIXME fixpoint *)
-  let k _ = Os.Cmd.run Cmd.(atom "xelatex" %% cli) |> Result.get_ok in
-  Memo.spawn m ~reads:(doc_file :: srcs) ~writes:[artefact; aux; toc; out] ~k
+  let k _ = Os.Cmd.run Cmd.(arg "xelatex" %% cli) |> Result.get_ok in
+  B0_memo.spawn m ~reads:(doc_file :: srcs) ~writes:[artefact; aux; toc; out] ~k
   @@ xelatex cli;
   Fut.return ()
 

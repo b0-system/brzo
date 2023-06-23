@@ -8,18 +8,18 @@ open B0_std
 (* Outcome steps *)
 
 type 'a build_dir_suff =
-  B00.Memo.t -> Brzo.Conf.t -> 'a -> string Fut.t
+  B0_memo.t -> Brzo.Conf.t -> 'a -> string Fut.t
 
 type 'a artefact =
-  B00.Memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t -> Fpath.t Fut.t
+  B0_memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t -> Fpath.t Fut.t
 
 type 'a build =
-  B00.Memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t -> artefact:Fpath.t ->
-  srcs:B00_fexts.map -> unit Fut.t
+  B0_memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t ->
+  artefact:Fpath.t -> srcs:B0_file_exts.map -> unit Fut.t
 
 type 'a action =
-  B00.Memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t -> artefact:Fpath.t ->
-  (unit -> (Os.Exit.t, string) result) Fut.t
+  B0_memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t ->
+  artefact:Fpath.t -> (unit -> (Os.Exit.t, string) result) Fut.t
 
 (* Outcomes *)
 
@@ -64,17 +64,17 @@ module Action = struct
   let show_pdf m c _ ~build_dir:_ ~artefact =
     Fut.return @@ fun () ->
     let pdf_viewer = Brzo.Conf.pdf_viewer c in
-    Result.bind (B00_pdf_viewer.find ~pdf_viewer ()) @@ fun pdf_viewer ->
-    Result.bind (B00_pdf_viewer.show pdf_viewer artefact) @@
+    Result.bind (B0_pdf_viewer.find ~pdf_viewer ()) @@ fun pdf_viewer ->
+    Result.bind (B0_pdf_viewer.show pdf_viewer artefact) @@
     fun () -> Ok Brzo.Exit.ok
 
   let show_uri m c _ ~build_dir:_ ~artefact =
     Fut.return @@ fun () ->
     let uri = Fmt.str "file://%s" (Fpath.to_string artefact) in
-    let browser = Brzo.Conf.www_browser c in
+    let browser = Brzo.Conf.web_browser c in
     let background = Brzo.Conf.background c in
-    Result.bind (B00_www_browser.find ~browser ()) @@ fun browser ->
-    Result.bind (B00_www_browser.show ~background ~prefix:true browser uri) @@
+    Result.bind (B0_web_browser.find ~browser ()) @@ fun browser ->
+    Result.bind (B0_web_browser.show ~background ~prefix:true browser uri) @@
     fun () -> Ok Brzo.Exit.ok
 end
 

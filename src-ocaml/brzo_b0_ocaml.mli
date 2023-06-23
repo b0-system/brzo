@@ -6,8 +6,6 @@
 (** B0 [ocaml] support. *)
 
 open B0_std
-open B00
-open B00_ocaml
 
 (** Data-driven OCaml module and compilation objects resolver.
 
@@ -47,7 +45,7 @@ module Mod_resolver : sig
   (** The type for data-driven module resolvers. *)
 
   val create :
-    Memo.t -> memo_dir:Fpath.t -> dep_dirs:Fpath.t list -> deps ->
+    B0_memo.t -> memo_dir:Fpath.t -> dep_dirs:Fpath.t list -> deps ->
     t * [`Miss_deps of dep list]
   (** [create m ~memo_dir ~dep_dirs deps] is a module resolver with
       restrictions [deps] in dependency directories [dep_dirs] using
@@ -55,10 +53,10 @@ module Mod_resolver : sig
       list of dependencies that couldn't be found in either of the
       [dep_dirs]. *)
 
-  val memo : t -> Memo.t
+  val memo : t -> B0_memo.t
   (** [memo r] is the memoizer of [r]. *)
 
-  val index : t -> B00_findex.t
+  val index : t -> B0_findex.t
   (** [index r] is the file index of [r], that is the {e unrestricted} index
       of [dep_dirs]. *)
 
@@ -90,29 +88,29 @@ module Mod_resolver : sig
       [cmi] located along side it. FIXME be principled about that:
       makes as a side effect ready in [memo r]. *)
 
-  val find_cmi_files_for_mod_name : t -> Mod.Name.t -> Fpath.t list
+  val find_cmi_files_for_mod_name : t -> B0_ocaml.Mod.Name.t -> Fpath.t list
   (** [find_cmi_files_for_mod_name r mn] finds cmi files whose filename could
       resolve to module name [mn]. *)
 
   val find_cmis_for_mod_name :
-    t -> Mod.Name.t -> Brzo_ocaml_cmi.t list Fut.t
+    t -> B0_ocaml.Mod.Name.t -> Brzo_ocaml_cmi.t list Fut.t
   (** [find_cmis_for_mod_name r mn] finds cmi information for files
       whose filename could resolve to module name [mn] in [r]. *)
 
   val find_cmis_for_mod_ref :
-    t -> Mod.Ref.t -> Brzo_ocaml_cmi.t list Fut.t
+    t -> B0_ocaml.Mod.Ref.t -> Brzo_ocaml_cmi.t list Fut.t
   (** [find_cmis_for_mod_ref r mref] are the cmis that resolve to [mref]
       in [r]. *)
 
   val find_impl_for_mod_ref :
-    t -> ext:string -> Mod.Ref.t -> Cobj.t option Fut.t
+    t -> ext:string -> B0_ocaml.Mod.Ref.t -> B0_ocaml.Cobj.t option Fut.t
   (** [find_impl_for_mod_ref r ~ext mref] continues with an
       implementation file for [mref] with extension [ext] and a
       suitable cmi file to use. *)
 
   val find_rec_impls_for_mod_refs :
-    ?deps:(Cobj.t -> Mod.Ref.Set.t) -> t -> ext:string -> Mod.Ref.Set.t ->
-    Cobj.t list Fut.t
+    ?deps:(B0_ocaml.Cobj.t -> B0_ocaml.Mod.Ref.Set.t) -> t -> ext:string ->
+    B0_ocaml.Mod.Ref.Set.t -> B0_ocaml.Cobj.t list Fut.t
   (** [find_rec_impls_for_mod_refs ~deps r ~ext mrefs] continues with a list
       of implementation files with extentions [ext] for [mref]s and
       their recursive dependencies determined according to [deps]

@@ -10,7 +10,7 @@ open B0_std
 (** {1:steps Outcome steps} *)
 
 type 'a build_dir_suff =
-  B00.Memo.t -> Brzo.Conf.t -> 'a -> string Fut.t
+  B0_memo.t -> Brzo.Conf.t -> 'a -> string Fut.t
 (** The type for build directory suffix determination. [build_dir_suff
     m c dc] is a suffix added to the build directory name. It can be
     used if your outcome has multiple targets (see e.g. the OCaml
@@ -18,21 +18,21 @@ type 'a build_dir_suff =
     parallel in the build dir. *)
 
 type 'a artefact =
-  B00.Memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t -> Fpath.t Fut.t
+  B0_memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t -> Fpath.t Fut.t
 (** The type for outcome artefact path determination. [artefact m c dc
     ~build_dir] is the absolute path, contained in the domain specific
     [build_dir] to the outcome artefact (can be a directory). *)
 
 type 'a build =
-  B00.Memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t -> artefact:Fpath.t ->
-  srcs:B00_fexts.map -> unit Fut.t
+  B0_memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t ->
+  artefact:Fpath.t -> srcs:B0_file_exts.map -> unit Fut.t
 (** The type for outcome artefact constructions. [build m c dc
     ~build_dir ~artefact ~srcs] builds [artefact] from [srcs] using
     [m]. [build_dir] is clean. [artefact] is the result of the {!artefact}
     function. *)
 
 type 'a action =
-  B00.Memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t -> artefact:Fpath.t ->
+  B0_memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t -> artefact:Fpath.t ->
   (unit -> (Os.Exit.t, string) result) Fut.t
 (** The type for outcome action. [action m c dc ~artefact] returns the
     action on [artefact] (already tested for existence and constructed

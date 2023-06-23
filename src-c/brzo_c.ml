@@ -5,7 +5,6 @@
 
 open B0_std
 open Fut.Syntax
-open B00
 open Brzo_b0_c
 
 (* Todo best-effort strategy:
@@ -25,7 +24,7 @@ open Brzo_b0_c
    chokes on broken pc files. *)
 
 module Conf = struct
-  open B00_serialk_sexp
+  open B0_sexp
   open Cmdliner
 
   type t =
@@ -47,7 +46,7 @@ module Conf = struct
       ~absent:None
       ~conf:Sexpq.(some (atomic Brzo.Sexp.fpath))
       ~arg:
-        Cmdliner.Arg.(opt (some ~none:"generated" (some B00_cli.fpath)) None)
+        Cmdliner.Arg.(opt (some ~none:"generated" (some B0_cli.fpath)) None)
 
   let use_dot_key = "use-dot"
   let use_dot_c =
@@ -78,33 +77,33 @@ end
 
 let name = "c"
 let doc_name = "C"
-let fingerprint = B00_fexts.c_lang
+let fingerprint = B0_file_exts.c_lang
 
 (* Exec outcome *)
 
 type builder =
-  { m : Memo.t;
+  { m : B0_memo.t;
     c : Brzo.Conf.t;
     dc : Conf.t;
     src_root : Fpath.t;
-    srcs : B00_fexts.map;
+    srcs : B0_file_exts.map;
     build_dir : Fpath.t; }
 
 let builder m c dc ~build_dir ~srcs =
   let src_root = Brzo.Conf.root c in
   Fut.return { m; c; dc; src_root; srcs; build_dir }
 
-let default_flags = Cmd.(atom "-g" % "-Wall")
+let default_flags = Cmd.(arg "-g" % "-Wall")
 
 let compile_src b ~in_dir ~obj_ext ~deps cname c =
   let d = Fpath.(in_dir / Fmt.str "%s%s" cname ".d") in
   let o = Fpath.(in_dir / Fmt.str "%s%s" cname obj_ext) in
   begin
-    Memo.file_ready b.m c;
+    B0_memo.file_ready b.m c;
     Inc_deps.write b.m ~src:c ~o:d;
     ignore @@
     let* deps = Inc_deps.read b.m ~src:c d in
-    List.iter (Memo.file_ready b.m) deps;
+    List.iter (B0_memo.file_ready b.m) deps;
     Compile.c_to_o ~args:default_flags b.m ~deps ~c ~o;
     Fut.return ()
   end;
@@ -122,15 +121,15 @@ let compile_srcs b ~in_dir =
           loop (o :: os) (String.Map.add cname c cunits) hs cs
       | f ->
           (* TODO error message *)
-          Memo.notify b.m `Warn
+          B0_memo.notify b.m `Warn
             "@[<v>%a:@,File ignored. %a's compilation unit already defined \
              by file:@,%a:@]"
             Fpath.pp_unquoted c Fmt.(code string) cname Fpath.pp_unquoted f;
           loop os cunits hs cs
   in
-  let hs = B00_fexts.(find_files (ext ".h") b.srcs) in
-  let cs = B00_fexts.(find_files (ext ".c") b.srcs) in
-  List.iter (Memo.file_ready b.m) hs;
+  let hs = B0_file_exts.(find_files (ext ".h") b.srcs) in
+  let cs = B0_file_exts.(find_files (ext ".c") b.srcs) in
+  List.iter (B0_memo.file_ready b.m) hs;
   loop [] String.Map.empty hs cs
 
 let build_exe b ~exe =
@@ -208,28 +207,28 @@ doxy (doxy_qpath out_dir) (doxy_srcs srcs)
 let find_doxyfile m c dc = match Conf.doxyfile dc with
 | None ->
     let doxyfile = Fpath.(Brzo.Conf.root c / "Doxyfile") in
-    if Os.File.exists doxyfile |> Memo.fail_if_error m then Some doxyfile else
-    None
+    if Os.File.exists doxyfile |> B0_memo.fail_if_error m
+    then Some doxyfile else None
 | Some doxyfile ->
-    match Os.File.exists doxyfile |> Memo.fail_if_error m with
+    match Os.File.exists doxyfile |> B0_memo.fail_if_error m with
     | true -> Some doxyfile
     | false ->
-        Memo.fail m "Doxyfile %a not found."
+        B0_memo.fail m "Doxyfile %a not found."
           Fmt.(code Fpath.pp_unquoted) doxyfile
 
 let vcs_version ~root =
   Log.if_error ~use:"" @@
-  Result.bind (B00_vcs.find ~dir:root ()) @@ function
+  Result.bind (B0_vcs.find ~dir:root ()) @@ function
   | None -> Ok ""
-  | Some vcs -> B00_vcs.describe vcs ~dirty_mark:true "HEAD"
+  | Some vcs -> B0_vcs.describe vcs ~dirty_mark:true "HEAD"
 
 let write_doxyfile m c dc ~out_dir ~srcs ~o =
   ignore @@ match find_doxyfile m c dc with
   | Some doxyfile ->
-      Memo.file_ready m doxyfile;
-      let* doxy =  Memo.read m doxyfile in
+      B0_memo.file_ready m doxyfile;
+      let* doxy =  B0_memo.read m doxyfile in
       let doxy = override_doxyfile ~out_dir ~srcs doxy in
-      (Memo.write m ~reads:[doxyfile] ~stamp:doxy o @@ fun () -> Ok doxy);
+      (B0_memo.write m ~reads:[doxyfile] ~stamp:doxy o @@ fun () -> Ok doxy);
       Fut.return ()
   | None ->
       let root = Brzo.Conf.root c in
@@ -237,11 +236,11 @@ let write_doxyfile m c dc ~out_dir ~srcs ~o =
       let version = vcs_version ~root in
       let* use_dot =
         if not (Conf.use_dot dc) then Fut.return false else
-        let* dot = Memo.tool_opt m Brzo_b0_doxygen.Tool.dot in
+        let* dot = B0_memo.tool_opt m Brzo_b0_doxygen.Tool.dot in
         match dot with
         | Some _ -> Fut.return true
         | None ->
-            Memo.notify
+            B0_memo.notify
               m `Warn "@[<v>Tool %a not found.@,Use option %a or invoke %a@,to \
                        disable this warning.@]"
               Fmt.(code string) "dot" Fmt.(code string) "--use-dot=false"
@@ -251,18 +250,18 @@ let write_doxyfile m c dc ~out_dir ~srcs ~o =
       let doxy =
         gen_doxyfile ~project_name ~version ~root ~out_dir ~use_dot ~srcs
       in
-      Memo.write m ~reads:srcs ~stamp:doxy o (fun () -> Ok doxy);
+      B0_memo.write m ~reads:srcs ~stamp:doxy o (fun () -> Ok doxy);
       Fut.return ()
 
 let doc_build m c dc ~build_dir ~artefact ~srcs =
   let out_dir = Fpath.(build_dir / "o") in
-  let srcs_exts = B00_fexts.(ext ".md" + ext ".h" + ext ".c") in
-  let srcs = B00_fexts.find_files srcs_exts srcs in
-  List.iter (Memo.file_ready m) srcs;
+  let srcs_exts = B0_file_exts.(ext ".md" + ext ".h" + ext ".c") in
+  let srcs = B0_file_exts.find_files srcs_exts srcs in
+  List.iter (B0_memo.file_ready m) srcs;
   let doxyfile = Fpath.(build_dir / "Doxyfile") in
   write_doxyfile m c dc ~out_dir ~srcs ~o:doxyfile;
-  let doxygen = Memo.tool m Brzo_b0_doxygen.Tool.doxygen in
-  Memo.spawn' m ~reads:(doxyfile :: srcs) ~writes_root:out_dir @@
+  let doxygen = B0_memo.tool m Brzo_b0_doxygen.Tool.doxygen in
+  B0_memo.spawn' m ~reads:(doxyfile :: srcs) ~writes_root:out_dir @@
   doxygen Cmd.(path doxyfile);
   Fut.return ()
 

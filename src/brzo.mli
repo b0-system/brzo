@@ -10,19 +10,19 @@ open B0_std
 (** Memo helpers. *)
 module Memo : sig
   val copy_file :
-    B00.Memo.t -> src_root:Fpath.t -> dst_root:Fpath.t ->
+    B0_memo.t -> src_root:Fpath.t -> dst_root:Fpath.t ->
     Fpath.t -> unit
     (** [copy m ~src_root ~dst_root src] copies [src] to destination
         {!root_path}[ ~src_root ~dst_root src]. *)
 
   val ensure_exec_build :
-    B00.Memo.t -> srcs:B00_fexts.map -> need_ext:Fpath.ext -> unit Fut.t
+    B0_memo.t -> srcs:B0_file_exts.map -> need_ext:Fpath.ext -> unit Fut.t
   (** [ensure_exe_build m ~srcs ~need_ext k] continues iff there's
       at least a file in [srcs] that has exention [need_ext] and fails
       with a message that no executable can be built otherwise. *)
 
   val run :
-    with_log:Fpath.t option -> B00.Memo.t -> (unit -> 'a Fut.t) ->
+    with_log:Fpath.t option -> B0_memo.t -> (unit -> 'a Fut.t) ->
     ('a, unit) result
 end
 
@@ -110,13 +110,13 @@ module Pre_domain : sig
         domain specific BRZO file dictionary. *)
 
     val parse :
-      (B00_serialk_sexp.Sexp.t * B00_serialk_sexp.Sexpq.path) ->
+      (B0_sexp.Sexp.t * B0_sexp.Sexpq.path) ->
       (t, string) result
     (** [parse] is a function that parses the BRZO file domain
         specific dictionary into a configuration. *)
 
     val parse_with_cli :
-      ((B00_serialk_sexp.Sexp.t * B00_serialk_sexp.Sexpq.path) ->
+      ((B0_sexp.Sexp.t * B0_sexp.Sexpq.path) ->
        (t, string) result) Cmdliner.Term.t
     (** [parse_with_cli] is a cmdliner term that has the command line
         interface for the configuration and a function that given the
@@ -145,7 +145,7 @@ module Pre_domain : sig
     val doc_name : string
     (** [doc_name] is the domain name for documentation. *)
 
-    val fingerprint : B00_fexts.t
+    val fingerprint : B0_file_exts.t
     (** [fingerprint] are file extensions whose presence in the source
         files hints at domain selection. *)
 
@@ -168,21 +168,21 @@ end
 module Sexp : sig
 
   val of_string :
-    ?file:Fpath.t -> string -> (B00_serialk_sexp.Sexp.t, string) result
-  (** [of_string] is like {!B00_serialk_sexp.Sexp.seq_of_string'} but
+    ?file:Fpath.t -> string -> (B0_sexp.Sexp.t, string) result
+  (** [of_string] is like {!B0_sexp.Sexp.seq_of_string'} but
       with alternate error formatting. *)
 
-  val of_file : Fpath.t -> (B00_serialk_sexp.Sexp.t * 'a list, string) result
+  val of_file : Fpath.t -> (B0_sexp.Sexp.t * 'a list, string) result
   (** [of_file file] reads from [file] using {!of_string}. *)
 
   val query :
-    'a B00_serialk_sexp.Sexpq.t ->
-    (B00_serialk_sexp.Sexp.t * B00_serialk_sexp.Sexpq.path) ->
+    'a B0_sexp.Sexpq.t ->
+    (B0_sexp.Sexp.t * B0_sexp.Sexpq.path) ->
     ('a, string) result
-  (** [query] is like {!B00_serialk_sexp.Sexp.query'} but with
+  (** [query] is like {!B0_sexp.Sexp.query'} but with
       alternate error formatting. *)
 
-  val fpath : Fpath.t B00_serialk_sexp.Sexpq.t
+  val fpath : Fpath.t B0_sexp.Sexpq.t
   (** [fpath] is queries atoms for file paths. *)
 end
 
@@ -210,7 +210,7 @@ module Conf : sig
 
     val with_cli_arg :
       ?docs:string -> ?docv:string -> string -> doc:string -> absent:'a ->
-      conf:'a B00_serialk_sexp.Sexpq.t ->
+      conf:'a B0_sexp.Sexpq.t ->
       arg:(Cmdliner.Arg.info -> 'a option Cmdliner.Arg.t) ->  'a t
     (** [with_cli_arg n ~doc ~docs ~docv ~absent ~conf ~arg] is a
         configuration bit named by [n].
@@ -223,7 +223,7 @@ module Conf : sig
         {- [absent] is used as a default value.}} *)
 
     val with_cli :
-      string -> absent:'a -> conf:'a B00_serialk_sexp.Sexpq.t ->
+      string -> absent:'a -> conf:'a B0_sexp.Sexpq.t ->
       cli:'a option Cmdliner.Term.t -> 'a t
     (** [with_cli n ~absent ~conf ~cli] is a configuration bit named by [n]
         {ul
@@ -235,19 +235,19 @@ module Conf : sig
     val cli : 'a t -> 'a option Cmdliner.Term.t
     (** [cli b] is the command line interface for [b]. *)
 
-    val conf : 'a t -> 'a B00_serialk_sexp.Sexpq.t
+    val conf : 'a t -> 'a B0_sexp.Sexpq.t
     (** [conf b] is the configuration {e key} query for [b]. If the key
         is not found [absent] is returned. *)
 
     val get : 'a t -> 'a option ->
-      (B00_serialk_sexp.Sexp.t * B00_serialk_sexp.Sexpq.path) ->
+      (B0_sexp.Sexp.t * B0_sexp.Sexpq.path) ->
       ('a, string) result
     (** [get b cli sexp] gets the configuration bit from [sexp] if [cli] is
         [None]. If it's not in the configuration then [absent] is returned.  *)
 
     val append :
       'a list t -> 'a list option ->
-      (B00_serialk_sexp.Sexp.t * B00_serialk_sexp.Sexpq.path) ->
+      (B0_sexp.Sexp.t * B0_sexp.Sexpq.path) ->
       ('a list, string) result
     (** [append b cli sexp] gets the configuration bit from [sexp] and
         appends them to [cli]. *)
@@ -286,7 +286,7 @@ module Conf : sig
     log_level:Log.level -> no_pager:bool -> outcome_mode:outcome_mode ->
     output_outcome_path:bool -> pdf_viewer:Cmd.t option -> root:Fpath.t ->
     srcs_i:Fpath.Set.t -> srcs_x:Fpath.Set.t -> tty_cap:Tty.cap ->
-    www_browser:Cmd.t option -> unit -> t
+    web_browser:Cmd.t option -> unit -> t
   (** [v] constructs a configuration with given attributes. See the
       accessors for semantics. *)
 
@@ -334,7 +334,7 @@ module Conf : sig
   val jobs : t -> int
   (** [jobs] is the maximal number of spawns allowed. *)
 
-  val memo : t -> (B00.Memo.t, string) result
+  val memo : t -> (B0_memo.t, string) result
   (** [memo] is the memoizer for the configuration. *)
 
   val no_pager : t -> bool
@@ -359,15 +359,15 @@ module Conf : sig
   val srcs_x : t -> Fpath.Set.t
   (** [srcs_x] are absolute prefixes to exclude. *)
 
-  val srcs : t -> (B00_fexts.map, string) result
+  val srcs : t -> (B0_file_exts.map, string) result
   (** [srcs c] are the absolute source files path in configuration [c]
       sorted by file extension. *)
 
   val tty_cap : t -> Tty.cap
   (** [tty_cap c] is the terminal capability to assume for output. *)
 
-  val www_browser : t -> Cmd.t option
-  (** [www_browser] is the WWW browser command to use. *)
+  val web_browser : t -> Cmd.t option
+  (** [web_browser] is the WWW browser command to use. *)
 
   val pp_auto : 'a Fmt.t -> 'a option Fmt.t
   (** [pp_auto pp] formats ["<auto>"] for [None] and the value with

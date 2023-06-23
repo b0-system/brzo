@@ -5,7 +5,7 @@
 
 open B0_std
 open Result.Syntax
-open B00_serialk_sexp
+open B0_sexp
 
 (* A few notes that may end up being ux quirks.
 
@@ -72,8 +72,8 @@ let edit c =
   | Some file -> file
   | None -> Fpath.(Brzo.Conf.root c / Brzo.Conf.brzo_file_name)
   in
-  let* editor = B00_editor.find () in
-  let* exit = B00_editor.edit_files editor [brzo_file] in
+  let* editor = B0_editor.find () in
+  let* exit = B0_editor.edit_files editor [brzo_file] in
   match exit with
   | `Exited 0 -> Ok Brzo.Exit.ok
   | _ -> Ok Brzo.Exit.some_error
@@ -151,7 +151,7 @@ let delete =
 let edit =
   let doc = "Edit or create the BRZO file" in
   let descr = `P "$(tname) edits opens the BRZO file in your editor." in
-  let envs = B00_editor.envs () in
+  let envs = B0_editor.Env.infos in
   subcmd "edit" ~doc ~envs ~descr
     Term.(const edit $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file)
 

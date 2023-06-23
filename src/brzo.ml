@@ -4,7 +4,7 @@
   ---------------------------------------------------------------------------*)
 
 open B0_std
-open B00_serialk_sexp
+open B0_sexp
 
 module Memo = struct
 
@@ -12,15 +12,15 @@ module Memo = struct
 
   let copy_file m ~src_root ~dst_root src =
     let dst = Fpath.reroot ~root:src_root ~dst:dst_root src in
-    B00.Memo.file_ready m src;
-    B00.Memo.copy m ~src dst
+    B0_memo.file_ready m src;
+    B0_memo.copy m ~src dst
 
   let ensure_exec_build m ~srcs ~need_ext =
-    match B00_fexts.find_files B00_fexts.(ext need_ext) srcs = [] with
+    match B0_file_exts.find_files B0_file_exts.(ext need_ext) srcs = [] with
     | false -> Fut.return ()
     | true ->
         let bstr = Fmt.(code string) in
-        B00.Memo.fail m "@[<v>No %a file found, cannot build an executable.@,\
+        B0_memo.fail m "@[<v>No %a file found, cannot build an executable.@,\
                          @[Check %a and %a.@]@]"
           bstr need_ext bstr "brzo sources" bstr "brzo --conf"
 
@@ -28,15 +28,15 @@ module Memo = struct
     let write_build_log m = match log_file with
     | None -> ()
     | Some log_file ->
-        Log.if_error ~use:() (B00_cli.Memo.Log.(write log_file (of_memo m)))
+        Log.if_error ~use:() (B0_cli.Memo.Log.(write log_file (of_memo m)))
     in
     let hook () = write_build_log m in
     Os.Exit.on_sigint ~hook @@ fun () ->
     let exit, set = Fut.create () in
-    B00.Memo.run_proc m
+    B0_memo.run_proc m
       (fun () -> let* v = fut () in set v; Fut.return ());
-    B00.Memo.stir m ~block:true;
-    let ret = match B00.Memo.status m with
+    B0_memo.stir m ~block:true;
+    let ret = match B0_memo.status m with
     | Ok () ->
         begin match Fut.value exit with
         | None -> (* should not happen *) Error ()
@@ -47,24 +47,24 @@ module Memo = struct
         let write_howto = Fmt.any "brzo log -w " in
         Log.err begin fun m ->
           m ~header:"" "@[%a@]"
-            (B000_conv.Op.pp_aggregate_error ~read_howto ~write_howto ()) e
+            (B0_zero_conv.Op.pp_aggregate_error ~read_howto ~write_howto ()) e
         end;
         Error ()
     in
     Log.time (fun _ m -> m "deleting trash") begin fun () ->
-      Log.if_error ~use:() (B00.Memo.delete_trash ~block:false m)
+      Log.if_error ~use:() (B0_memo.delete_trash ~block:false m)
     end;
     write_build_log m;
     ret
 
   let create ~hash_fun ~cwd ~cache_dir ~trash_dir ~jobs =
     let feedback =
-      let op_howto ppf o = Fmt.pf ppf "brzo log --id %d" (B000.Op.id o) in
+      let op_howto ppf o = Fmt.pf ppf "brzo log --id %d" (B0_zero.Op.id o) in
       let show_op = Log.Info and show_ui = Log.Error and level = Log.level () in
-      B00_cli.Memo.pp_leveled_feedback ~op_howto ~show_op ~show_ui ~level
+      B0_cli.Memo.pp_leveled_feedback ~op_howto ~show_op ~show_ui ~level
         Fmt.stderr
     in
-    B00.Memo.memo ~hash_fun ~cwd ~cache_dir ~trash_dir ~jobs ~feedback ()
+    B0_memo.make ~hash_fun ~cwd ~cache_dir ~trash_dir ~jobs ~feedback ()
 end
 
 module Exit = struct
@@ -115,11 +115,11 @@ module Pre_domain = struct
     val tid : t Type.Id.t
     val keys : String.Set.t
     val parse :
-      B00_serialk_sexp.Sexp.t * B00_serialk_sexp.Sexpq.path ->
+      B0_sexp.Sexp.t * B0_sexp.Sexpq.path ->
       (t, string) result
 
     val parse_with_cli :
-      (B00_serialk_sexp.Sexp.t * B00_serialk_sexp.Sexpq.path ->
+      (B0_sexp.Sexp.t * B0_sexp.Sexpq.path ->
        (t, string) result) Cmdliner.Term.t
     val pp : t Fmt.t
   end
@@ -128,7 +128,7 @@ module Pre_domain = struct
     module Conf : CONF
     val name : string
     val doc_name : string
-    val fingerprint : B00_fexts.t
+    val fingerprint : B0_file_exts.t
     val pre_outcomes : outcome list
   end
 
@@ -230,7 +230,7 @@ module Conf = struct
     in
     let add_file fname p (seen, by_ext as acc) =
       let ext = Fpath.get_ext p in
-      if not (String.Set.mem ext B00_fexts.all) then acc else
+      if not (String.Set.mem ext B0_file_exts.all) then acc else
       seen, (String.Map.add_to_list ext p by_ext)
     in
     let add st fname p (seen, by_ext as acc) =
@@ -240,19 +240,19 @@ module Conf = struct
       | _ -> add_file fname p acc
     in
     let add_i (seen, by_ext as acc) i =
-      match Os.File.exists i |> Result.to_failure with
+      match Os.File.exists i |> Result.error_to_failure with
       | true -> add_file (Fpath.basename i) i acc
       | false ->
           if exclude (Fpath.basename i) i then acc else
           let i = Fpath.strip_dir_sep i in
           if Fpath.Set.mem i seen then acc else
           let acc = Fpath.Set.add i seen, by_ext in
-          if not (Os.Dir.exists i |> Result.to_failure) then acc else
+          if not (Os.Dir.exists i |> Result.error_to_failure) then acc else
           let prune _ dname dir (seen, _) =
             exclude dname dir || Fpath.Set.mem dir seen
           in
           Os.Dir.fold ~dotfiles:true ~prune ~recurse:true
-            add i acc |> Result.to_failure
+            add i acc |> Result.error_to_failure
     in
     let srcs_i = Fpath.Set.elements srcs_i in
     let acc = Fpath.Set.empty, String.Map.empty in
@@ -274,31 +274,31 @@ module Conf = struct
       jobs : int;
       log_file : Fpath.t;
       log_level : Log.level;
-      memo : (B00.Memo.t, string) result Lazy.t;
+      memo : (B0_memo.t, string) result Lazy.t;
       no_pager : bool;
       outcome_mode : outcome_mode;
       output_outcome_path : bool;
       pdf_viewer : Cmd.t option;
       root : Fpath.t;
-      srcs : (B00_fexts.map, string) result Lazy.t;
+      srcs : (B0_file_exts.map, string) result Lazy.t;
       srcs_i : Fpath.Set.t;
       srcs_x : Fpath.Set.t;
       tty_cap : Tty.cap;
-      www_browser : Cmd.t option; }
+      web_browser : Cmd.t option; }
 
   let v
       ~action_args ~background ~b0_dir ~brzo_file ~cache_dir ~cwd ~domain_name
       ~domain_confs ~hash_fun ~jobs ~log_file ~log_level ~no_pager
       ~outcome_mode ~output_outcome_path ~pdf_viewer ~root ~srcs_i ~srcs_x
-      ~tty_cap ~www_browser ()
+      ~tty_cap ~web_browser ()
     =
-    let trash_dir = Fpath.(b0_dir / B00_cli.Memo.trash_dir_name) in
+    let trash_dir = Fpath.(b0_dir / B0_cli.Memo.trash_dir_name) in
     let srcs = lazy (collect_srcs ~srcs_i ~srcs_x) in
     let memo = lazy (Memo.create ~hash_fun ~cwd ~cache_dir ~trash_dir ~jobs) in
     { action_args; background; b0_dir; brzo_file; cache_dir; cwd; domain_name;
       domain_confs; hash_fun; jobs; log_file; log_level; memo; no_pager;
       outcome_mode; output_outcome_path; pdf_viewer; root; srcs_i; srcs_x;
-      srcs; tty_cap; www_browser; }
+      srcs; tty_cap; web_browser; }
 
   let action_args c = c.action_args
   let background c = c.background
@@ -331,7 +331,7 @@ module Conf = struct
   let srcs_i c = c.srcs_i
   let srcs_x c = c.srcs_x
   let tty_cap c = c.tty_cap
-  let www_browser c = c.www_browser
+  let web_browser c = c.web_browser
 
   let auto = Fmt.any "<auto>"
   let pp_auto pp = Fmt.option ~none:auto pp
@@ -354,7 +354,7 @@ module Conf = struct
         Fmt.field "root" root Fpath.pp_quoted;
         Fmt.field "srcs-i" srcs_i (Fmt.vbox Fpath.(Set.pp pp_quoted));
         Fmt.field "srcs-x" srcs_x (Fmt.vbox Fpath.(Set.pp pp_quoted));
-        Fmt.field "www-browser" www_browser (pp_auto Cmd.pp); ]
+        Fmt.field "web-browser" web_browser (pp_auto Cmd.pp); ]
 
   let pp_show ppf c = Fmt.pf ppf "@[<v>%a@,%a@]" Fmt.(code string) "Common" pp c
 end
@@ -406,7 +406,7 @@ module Conf_setup = struct
   (* BRZO file *)
 
   let read_brzo_file ~use_brzo_file file =
-    let none = Ok (B00_serialk_sexp.Sexp.list [], []) in
+    let none = Ok (B0_sexp.Sexp.list [], []) in
     match file with
     | None -> none
     | Some _ when not use_brzo_file -> none
@@ -423,14 +423,14 @@ module Conf_setup = struct
        [Pre_domain.T.Conf.with_cli] *)
       Conf_with_cli :
         ((module Pre_domain.T with type Conf.t = 'a) *
-         ((B00_serialk_sexp.Sexp.t * B00_serialk_sexp.Sexpq.path) ->
+         ((B0_sexp.Sexp.t * B0_sexp.Sexpq.path) ->
           ('a, string) result)) -> conf_with_cli
 
   let parse_with_fun
       (type a) ~outcome_name (module D : Pre_domain.T with type Conf.t = a)
       parse sexp
     =
-    let absent = B00_serialk_sexp.Sexp.list [], [] in
+    let absent = B0_sexp.Sexp.list [], [] in
     let domain_dictq = Sexpq.(key D.name ~absent sexp_with_path) in
     let outcome_key = "outcome" in
     let validate = Some (String.Set.add outcome_key D.Conf.keys) in
@@ -535,19 +535,19 @@ module Conf_setup = struct
   let common_keys = [domain_key; outcome_mode_key; srcs_i_key; srcs_x_key]
 
   let get_log_file ~cwd ~b0_dir ~log_file = match log_file with
-  | None -> Fpath.(b0_dir / Conf.brzo_dir_name / B00_cli.Memo.log_file_name)
+  | None -> Fpath.(b0_dir / Conf.brzo_dir_name / B0_cli.Memo.log_file_name)
   | Some p -> Fpath.(cwd // p)
 
   let with_cli
       ~auto_cwd_root ~use_brzo_file ~action_args ~background ~b0_dir
       ~brzo_file ~cache_dir ~cwd ~hash_fun ~jobs ~log_file ~log_level ~no_pager
       ~outcome_name ~outcome_mode ~output_outcome_path
-      ~pdf_viewer ~root ~srcs_i ~srcs_x ~tty_cap ~www_browser ~all_domains
+      ~pdf_viewer ~root ~srcs_i ~srcs_x ~tty_cap ~web_browser ~all_domains
       ~domain ()
     =
-    let tty_cap = B00_cli.B0_std.get_tty_cap tty_cap in
-    let log_level = B00_cli.B0_std.get_log_level log_level in
-    B00_cli.B0_std.setup tty_cap log_level ~log_spawns:Log.Debug;
+    let tty_cap = B0_cli.B0_std.get_tty_cap tty_cap in
+    let log_level = B0_cli.B0_std.get_log_level log_level in
+    B0_cli.B0_std.setup tty_cap log_level ~log_spawns:Log.Debug;
     let set_cwd = match cwd with None -> Ok () | Some c -> Os.Dir.set_cwd c in
     Result.bind set_cwd @@ fun () ->
     Result.bind (Os.Dir.cwd ()) @@ fun cwd ->
@@ -562,15 +562,15 @@ module Conf_setup = struct
     Result.bind (get_outcome_mode ~outcome_mode sexp) @@ fun outcome_mode ->
     Result.bind (get_srcs_ix ~root ~srcs_i ~srcs_x sexp) @@
     fun (srcs_i, srcs_x) ->
-    let b0_dir = B00_cli.Memo.get_b0_dir ~cwd ~root ~b0_dir in
-    let cache_dir = B00_cli.Memo.get_cache_dir ~cwd ~b0_dir ~cache_dir in
+    let b0_dir = B0_cli.Memo.get_b0_dir ~cwd ~root ~b0_dir in
+    let cache_dir = B0_cli.Memo.get_cache_dir ~cwd ~b0_dir ~cache_dir in
     let log_file = get_log_file ~cwd ~b0_dir ~log_file in
-    let hash_fun = B00_cli.Memo.get_hash_fun ~hash_fun in
-    let jobs = B00_cli.Memo.get_jobs ~jobs in
+    let hash_fun = B0_cli.Memo.get_hash_fun ~hash_fun in
+    let jobs = B0_cli.Memo.get_jobs ~jobs in
     Ok (Conf.v ~action_args ~background ~b0_dir ~brzo_file ~cache_dir ~cwd
           ~domain_name ~domain_confs ~hash_fun ~jobs ~log_file ~log_level
           ~no_pager ~outcome_mode ~output_outcome_path ~pdf_viewer ~root
-          ~srcs_i ~srcs_x ~tty_cap ~www_browser ())
+          ~srcs_i ~srcs_x ~tty_cap ~web_browser ())
 end
 
 module Cli = struct
@@ -588,7 +588,7 @@ module Cli = struct
 
   (* General configuration cli arguments *)
 
-  let fpath = B00_cli.fpath
+  let fpath = B0_cli.fpath
   let docs = Manpage.s_common_options
 
   let action_args =
@@ -598,7 +598,7 @@ module Cli = struct
     in
     Arg.(value & pos_all string [] & info [] ~doc ~docv:"ARG")
 
-  let b0_dir = B00_cli.Memo.b0_dir ()
+  let b0_dir = B0_cli.Memo.b0_dir ()
 
   let brzo_file =
     let doc =
@@ -614,9 +614,9 @@ module Cli = struct
     Arg.(value & opt (some fpath) None &
          info ["brzo-file"] ~absent ~env ~doc ~docv ~docs)
 
-  let background = B00_www_browser.background ~docs ()
-  let www_browser = B00_www_browser.browser ~docs ()
-  let cache_dir = B00_cli.Memo.cache_dir ()
+  let background = B0_web_browser.background ~docs ()
+  let web_browser = B0_web_browser.browser ~docs ()
+  let cache_dir = B0_cli.Memo.cache_dir ()
   let cwd =
     let doc =
       "Set the current working directory to $(docv) before doing anything. \
@@ -661,19 +661,19 @@ module Cli = struct
          info ["root"] ~env ~doc ~docv ~docs)
 
   let hash_fun =
-    B00_cli.Memo.hash_fun ~docs ~env:(Cmd.Env.info "BRZO_HASH_FUN") ()
+    B0_cli.Memo.hash_fun ~docs ~env:(Cmd.Env.info "BRZO_HASH_FUN") ()
 
-  let jobs = B00_cli.Memo.jobs ~docs ~env:(Cmd.Env.info "BRZO_JOBS") ()
+  let jobs = B0_cli.Memo.jobs ~docs ~env:(Cmd.Env.info "BRZO_JOBS") ()
   let log_file =
     let env = Cmd.Env.info "BRZO_LOG_FILE" in
     let doc_none = "$(b,.log) in $(b,brzo) directory of b0 directory" in
-    B00_cli.Memo.log_file ~docs ~doc_none ~env ()
+    B0_cli.Memo.log_file ~docs ~doc_none ~env ()
 
   let log_level =
-    B00_cli.B0_std.log_level ~docs ~env:(Cmd.Env.info "BRZO_VERBOSITY") ()
+    B0_cli.B0_std.log_level ~docs ~env:(Cmd.Env.info "BRZO_VERBOSITY") ()
 
-  let no_pager = B00_pager.don't ~docs ()
-  let pdf_viewer = B00_pdf_viewer.pdf_viewer ~docs ()
+  let no_pager = B0_pager.don't ~docs ()
+  let pdf_viewer = B0_pdf_viewer.pdf_viewer ~docs ()
 
   let srcs_i =
     let doc =
@@ -698,7 +698,7 @@ module Cli = struct
     Arg.(value & opt_all fpath [] & info ["x"; "srcs-x"] ~doc ~docv ~docs)
 
   let tty_cap =
-    B00_cli.B0_std.tty_cap ~docs ~env:(Cmd.Env.info "BRZO_COLOR") ()
+    B0_cli.B0_std.tty_cap ~docs ~env:(Cmd.Env.info "BRZO_COLOR") ()
 
   (* Domain specific cli *)
 
@@ -732,7 +732,7 @@ module Cli = struct
     let c
         action_args b0_dir background brzo_file cache_dir cwd hash_fun jobs
         log_file log_level no_pager outcome_name outcome_mode
-        output_outcome_path pdf_viewer root srcs_i srcs_x tty_cap www_browser
+        output_outcome_path pdf_viewer root srcs_i srcs_x tty_cap web_browser
         domain
       =
       Result.map_error (fun s -> `Msg s) @@
@@ -740,7 +740,7 @@ module Cli = struct
         ~auto_cwd_root ~use_brzo_file ~action_args ~background ~b0_dir
         ~brzo_file ~cache_dir ~cwd ~hash_fun ~jobs ~log_file ~log_level
         ~no_pager ~outcome_name ~outcome_mode ~output_outcome_path ~pdf_viewer
-        ~root ~srcs_i ~srcs_x ~tty_cap ~www_browser ~all_domains ~domain ()
+        ~root ~srcs_i ~srcs_x ~tty_cap ~web_browser ~all_domains ~domain ()
     in
     let outcome_name = outcome_name domain in
     let outcome_mode = outcome_mode domain in
@@ -751,7 +751,7 @@ module Cli = struct
     Term.(const c $ action_args $ b0_dir $ background $ brzo_file $ cache_dir $
           cwd $ hash_fun $ jobs $ log_file $ log_level $ no_pager $
           outcome_name $ outcome_mode $ output_outcome_path $
-          pdf_viewer $ root $ srcs_i $ srcs_x $ tty_cap $ www_browser $
+          pdf_viewer $ root $ srcs_i $ srcs_x $ tty_cap $ web_browser $
           domain_cli_conf)
 end
 

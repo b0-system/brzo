@@ -23,7 +23,7 @@ type t = V : (module T with type Conf.t = 'a) -> t
 val name : t -> string
 (** [name d] is the identifier of domain [d]. *)
 
-val fingerprint : t -> B00_fexts.t
+val fingerprint : t -> B0_file_exts.t
 (** [fingerprint d] is the fingerprint of [d]. *)
 
 val pre_domain : t -> Brzo.Pre_domain.t

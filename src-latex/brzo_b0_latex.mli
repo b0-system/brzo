@@ -6,23 +6,22 @@
 (** LaTeX domain B0 helpers. *)
 
 open B0_std
-open B00
 
 (** B0 LaTeX support. *)
 
 module Tool : sig
 
-  val xelatex : Tool.t
+  val xelatex : B0_memo.Tool.t
   (** [xelatex] is the [xelatex] tool. *)
 
-  val bibtex : Tool.t
+  val bibtex : B0_memo.Tool.t
   (** [bibtex] is the [bibtex] tool. *)
 end
 
 module Compile : sig
   val cmd :
-    Memo.t -> ?args:Cmd.t -> tex:Fpath.t -> dir:Fpath.t -> oname:string ->
-    unit -> unit
+    B0_memo.t -> ?args:Cmd.t -> tex:Fpath.t -> dir:Fpath.t ->
+    oname:string -> unit -> unit
     (** [cmd ~tex ~o] compiles [tex] to the PDF file [oname.pdf] in [dir]
         using {!Tool.xelatex}. *)
 end
@@ -62,7 +61,7 @@ end
 (** DOIs and their resolution. *)
 module Doi : sig
 
-  val default_resolver : B00_http.Uri.t
+  val default_resolver : B0_http.Url.t
   (** [default_resolver] is the default resolver used to
       resolve DOIs. This is [https://doi.org]. *)
 
@@ -79,14 +78,14 @@ module Doi : sig
   val oneline_bib_format : string
   (** [oneline_bib_format] is "text/bibliography; charset=utf-8". *)
 
-  val resolve_to_uri :
-    ?resolver:string -> B00_http.Httpr.t -> t -> (string, string) result
-  (** [resolve_to_uri r ~resolver doi] resolve [doi] with [resolver]
+  val resolve_to_url :
+    ?resolver:string -> B0_http.Http_client.t -> t -> (string, string) result
+  (** [resolve_to_url r ~resolver doi] resolve [doi] with [resolver]
       to an URI with [resolver] (defaults to {!default_resolver}). *)
 
   val resolve_to_bib :
-    ?format:string -> ?resolver:B00_http.Uri.t ->
-    B00_http.Httpr.t -> t -> (string, string) result
+    ?format:string -> ?resolver:B0_http.Url.t ->
+    B0_http.Http_client.t -> t -> (string, string) result
   (** [resolve_to_bib r ~resolver doi] resolves [doi] to a bibliographic entry
       with [resolver] (defaults to {!default_resolver}). *)
 end
@@ -99,7 +98,7 @@ module Bibdoi : sig
   type t
   (** The type for [.bibdoi] files. *)
 
-  val sexp : t -> B00_serialk_sexp.Sexp.t
+  val sexp : t -> B0_sexp.Sexp.t
   (** [sexp b] is [b]'s underlying s-expression. *)
 
   val dois : t -> Doi.t list
@@ -111,7 +110,7 @@ module Bibdoi : sig
       to {!Os.File.dash}. *)
 
   val to_bibtex :
-    ?resolver:string -> B00_http.Httpr.t -> t -> (string, string) result
+    ?resolver:string -> B0_http.Http_client.t -> t -> (string, string) result
   (** [to_bibtex r ~resolver b] resolves the DOIs of [b] to bibtex entries
       using [resolver] (defaults to {!Doi.default_resolver}. *)
 end

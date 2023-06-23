@@ -6,13 +6,12 @@
 (** C B0 helpers. *)
 
 open B0_std
-open B00
 
 module Tool : sig
-  val doxygen : Tool.t
+  val doxygen : B0_memo.Tool.t
   (** [dogygen] is the [doxygen] tool. *)
 
-  val dot : Tool.t
+  val dot : B0_memo.Tool.t
   (** [dot] is the dot tool. *)
 end
 

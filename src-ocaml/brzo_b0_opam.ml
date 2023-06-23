@@ -5,15 +5,14 @@
 
 open B0_std
 open B0_std.Fut.Syntax
-open B00
 
-let tool = Tool.by_name ~vars:["PATH"] "opam"
-let opam_bin = Cmd.atom "opam"
+let tool = B0_memo.Tool.by_name ~vars:["PATH"] "opam"
+let opam_bin = Cmd.arg "opam"
 
 (* FIXME memo is used here but only for future proofing but we should
    really use it. Also we need an easy no caching option spawns in Memo. *)
 
-let exists m = match Os.Cmd.find opam_bin |> Memo.fail_if_error m with
+let exists m = match Os.Cmd.find opam_bin |> B0_memo.fail_if_error m with
 | None -> Fut.return false | Some _ -> Fut.return true
 
 let if_exists m f =
@@ -22,33 +21,34 @@ let if_exists m f =
   Fut.map Option.some (f ())
 
 let run m ?switch:s cmd oargs =
-  let opam = Os.Cmd.get opam_bin |> Memo.fail_if_error m in
-  let s = match s with None -> Cmd.empty | Some s -> Cmd.(atom "--switch" % s) in
+  let opam = Os.Cmd.get opam_bin |> B0_memo.fail_if_error m in
+  let s = match s with None -> Cmd.empty | Some s -> Cmd.(arg "--switch" % s) in
   Fut.return
     (Os.Cmd.run_out ~trim:true Cmd.(opam % cmd %% s %% oargs))
 
 let lib_dir m ?switch () =
-  let* r = run m ?switch "var" Cmd.(atom "lib") in
+  let* r = run m ?switch "var" Cmd.(arg "lib") in
   let lib_dir = Result.bind r Fpath.of_string in
-  let lib_dir = Memo.fail_if_error m lib_dir in
+  let lib_dir = B0_memo.fail_if_error m lib_dir in
   Fut.return lib_dir
 
 let list m ?switch which () =
   let which = match which with
-  | `Available -> Cmd.atom "--available"
-  | `Installed -> Cmd.atom "--installed"
+  | `Available -> Cmd.arg "--available"
+  | `Installed -> Cmd.arg "--installed"
   in
   let* r = run m ?switch "list" Cmd.(which % "--short") in
-  let list = Result.bind r @@ fun s -> Ok (B00_lines.of_string (String.trim s))
+  let list = Result.bind r @@ fun s ->
+    Ok (B0_text_lines.of_string (String.trim s))
   in
-  let list = Memo.fail_if_error m list in
+  let list = B0_memo.fail_if_error m list in
   Fut.return list
 
 (* FIXME *)
 type pkg = string * string option
 let pkg_list ?switch:s () =
   let parse_pkg n s acc = match String.cut_left ~sep:" " s with
-  | None -> B00_lines.err n " Cannot parse package from %S" s
+  | None -> B0_text_lines.fail n " Cannot parse package from %S" s
   | Some (pkg, version) ->
       let pkg = match String.trim version with
       | "--" -> (String.trim pkg, None)
@@ -57,13 +57,13 @@ let pkg_list ?switch:s () =
       pkg :: acc
   in
   Result.bind (Os.Cmd.get opam_bin) @@ fun opam ->
-  let s = match s with None -> Cmd.empty | Some s -> Cmd.(atom "--switch" % s) in
+  let s = match s with None -> Cmd.empty | Some s -> Cmd.(arg "--switch" % s) in
   let list =
     Cmd.(opam % "list" %% s % "--columns=name,installed-version"  %
          "--short" % "--normalise" % "--all")
   in
   Result.bind (Os.Cmd.run_out ~trim:true list) @@ fun pkg_list ->
-  B00_lines.fold pkg_list parse_pkg []
+  B0_text_lines.fold pkg_list parse_pkg []
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2018 The brzo programmers

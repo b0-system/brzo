@@ -36,14 +36,14 @@ let build_dir (type c) (module D : T with type Conf.t = c) o m c dc =
   Fut.return d
 
 let run_outcome_build o m c dc ~build_dir ~artefact =
-  let m = B00.Memo.with_mark m (Fmt.str "%s-build" (Brzo_outcome.name o)) in
-  let srcs = B00.Memo.fail_if_error m (Brzo.Conf.srcs c) in
-  let* () = B00.Memo.delete m build_dir in
-  let* () = B00.Memo.mkdir m build_dir in
+  let m = B0_memo.with_mark m (Fmt.str "%s-build" (Brzo_outcome.name o)) in
+  let srcs = B0_memo.fail_if_error m (Brzo.Conf.srcs c) in
+  let* () = B0_memo.delete m build_dir in
+  let* () = B0_memo.mkdir m build_dir in
   (Brzo_outcome.build o) m c dc ~build_dir ~artefact ~srcs
 
 let run_outcome_action o m c dc ~build_dir ~artefact =
-  let m = B00.Memo.with_mark m (Fmt.str "%s-action" (Brzo_outcome.name o)) in
+  let m = B0_memo.with_mark m (Fmt.str "%s-action" (Brzo_outcome.name o)) in
   match Os.Path.exists artefact |> Log.if_error ~use:false with
   | false ->
       Log.err (fun m -> m "No outcome, did you build before ?");
@@ -63,8 +63,8 @@ let action_mode c domain m () =
 let conf_mode (type c) c (module D : T with type Conf.t = c) =
   Log.if_error' ~use:Brzo.Exit.some_error @@
   let outcome_name, dc = Option.get (Brzo.Conf.domain_conf c (module D)) in
-  Result.bind (B00_pager.find ~don't:(Brzo.Conf.no_pager c) ()) @@ fun pager ->
-  Result.bind (B00_pager.page_stdout pager) @@ fun () ->
+  Result.bind (B0_pager.find ~don't:(Brzo.Conf.no_pager c) ()) @@ fun pager ->
+  Result.bind (B0_pager.page_stdout pager) @@ fun () ->
   Log.app begin fun m ->
     m "@[<v>%a domain@,%a@,%a@,@,%a@]"
       Fmt.(code string) D.doc_name
@@ -83,7 +83,7 @@ let path_mode c domain m () =
 let delete_mode c domain m () =
   let o, dc = get_outcome_and_conf c domain in
   let* build_dir = build_dir domain o m c dc in
-  let* () = B00.Memo.delete m build_dir in
+  let* () = B0_memo.delete m build_dir in
   Fut.return (`Exit Brzo.Exit.ok)
 
 let build_mode c domain m () =
@@ -100,14 +100,14 @@ let normal_mode c domain m () =
   let* build_dir = build_dir domain o m c dc in
   let* artefact = (Brzo_outcome.artefact o) m c dc ~build_dir in
   let* () = run_outcome_build o m c dc ~build_dir ~artefact in
-  B00.Memo.stir m ~block:true;
-  if B00.Memo.has_failures m
+  B0_memo.stir m ~block:true;
+  if B0_memo.has_failures m
   then Fut.return (`Exit Brzo.Exit.outcome_build_error)
   else run_outcome_action o m c dc ~build_dir ~artefact
 
 let run_memo ~with_log c f =
   Result.bind (Brzo.Conf.memo c) @@ fun m ->
-  let m = B00.Memo.with_mark m "setup" in
+  let m = B0_memo.with_mark m "setup" in
   match Brzo.Memo.run ~with_log m (f m) with
   | Ok (`Exit r) -> Ok r
   | Ok (`Exec a) -> Log.if_error' ~use:Brzo.Exit.outcome_action_error @@ a ()
@@ -140,7 +140,7 @@ let of_conf c ds = match Brzo.Conf.domain_name c with
 | Some d -> find d ds
 | None ->
     Result.bind (Brzo.Conf.srcs c) @@ fun srcs ->
-    let has_srcs d = B00_fexts.exists_file (fingerprint d) srcs in
+    let has_srcs d = B0_file_exts.exists_file (fingerprint d) srcs in
     try Ok (List.find has_srcs ds) with
     | Not_found ->
         Fmt.error

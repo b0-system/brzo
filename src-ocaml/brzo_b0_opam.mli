@@ -6,17 +6,16 @@
 (** Opam b0 helpers. *)
 
 open B0_std
-open B00
 
-val tool : Tool.t
+val tool : B0_memo.Tool.t
 (** [tool] is the [opam] tool. *)
 
-val exists : Memo.t -> bool Fut.t
-val if_exists : Memo.t -> (unit -> 'a Fut.t) -> 'a option Fut.t
-val lib_dir : Memo.t -> ?switch:string -> unit -> Fpath.t Fut.t
+val exists : B0_memo.t -> bool Fut.t
+val if_exists : B0_memo.t -> (unit -> 'a Fut.t) -> 'a option Fut.t
+val lib_dir : B0_memo.t -> ?switch:string -> unit -> Fpath.t Fut.t
 
 val list :
-  Memo.t -> ?switch:string -> [ `Available | `Installed ] -> unit ->
+  B0_memo.t -> ?switch:string -> [ `Available | `Installed ] -> unit ->
   string list Fut.t
 
 type pkg = string * string option

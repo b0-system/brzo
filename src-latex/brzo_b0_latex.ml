@@ -4,20 +4,20 @@
   ---------------------------------------------------------------------------*)
 
 open B0_std
-open B00
+open Result.Syntax
 
 module Tool = struct
-  let xelatex = Tool.by_name ~vars:["PATH"] "xelatex"
-  let bibtex = Tool.by_name "bibtex"
+  let xelatex = B0_memo.Tool.by_name ~vars:["PATH"] "xelatex"
+  let bibtex = B0_memo.Tool.by_name "bibtex"
 end
 
 module Compile = struct
   let cmd m ?args:(more_args = Cmd.empty) ~tex ~dir ~oname () =
-    let xelatex = Memo.tool m Tool.xelatex in
+    let xelatex = B0_memo.tool m Tool.xelatex in
     let pdf = Fpath.(dir / Fmt.str "%s.pdf" oname) in
     let fls = Fpath.(dir / Fmt.str "%s.fls" oname) in
-    Memo.spawn m ~reads:[tex] ~writes:[pdf; fls] @@
-    xelatex Cmd.(atom "-file-line-error" % "-halt-on-error" %
+    B0_memo.spawn m ~reads:[tex] ~writes:[pdf; fls] @@
+    xelatex Cmd.(arg "-file-line-error" % "-halt-on-error" %
                  "-interaction=errorstopmode" %
                  "-output-directory" %% path dir %% more_args %
                  Fmt.str "-jobname=%s" oname %% path tex)
@@ -37,17 +37,17 @@ module Fls = struct
       in
       match Fpath.of_string (rem_dot_seg (String.trim p)) with
       | Ok p -> p
-      | Error e -> B00_lines.err i "cannot parse path: %s" e
+      | Error e -> B0_text_lines.fail i "cannot parse path: %s" e
     in
     let parse_line i l = match String.cut_left ~sep:" " l with
-    | None -> B00_lines.err i "cannot parse line: %S" l
+    | None -> B0_text_lines.fail i "cannot parse line: %S" l
     | Some ("INPUT", p) -> `Input (parse_path i p)
     | Some ("OUTPUT", p) -> `Output (parse_path i p)
     | Some ("PWD", p) ->
         let p = parse_path i p in
         if Fpath.is_abs p then `Cwd p else
-        B00_lines.err i "PWD directive: %a not absolute" Fpath.pp_quoted p
-    | Some (dir, _) -> B00_lines.err i "unknown directive: %S" dir
+        B0_text_lines.fail i "PWD directive: %a not absolute" Fpath.pp_quoted p
+    | Some (dir, _) -> B0_text_lines.fail i "unknown directive: %S" dir
     in
     let rec loop i cwd reads writes = function
     | [] -> Ok { reads; writes }
@@ -61,10 +61,10 @@ module Fls = struct
             loop (i + 1) cwd reads (Fpath.Set.add Fpath.(cwd // p) writes) ls
     in
     try
-      let lines = B00_lines.of_string s in
+      let lines = B0_text_lines.of_string s in
       loop 1 (Fpath.v "/") Fpath.Set.empty Fpath.Set.empty lines
     with
-    | Failure e -> B00_lines.err_file ?file e
+    | Failure e -> B0_text_lines.file_error ?file e
 end
 
 module Latex = struct
@@ -94,48 +94,50 @@ module Latex = struct
 end
 
 module Doi = struct
-  open B00_http
+  open B0_http
 
   let default_resolver = "https://doi.org"
 
   type t = string
   let pp = Fmt.string
 
-  let resp_success req resp = match Http.resp_status resp with
-  | 200 -> Ok (Http.resp_body resp)
-  | st ->
-      Fmt.error "%s on %s: responded with %d"
-        (Http.meth_to_string (Http.req_meth req)) (Http.req_uri req) st
+  let response_success request response =
+    match Http.Response.status response with
+    | 200 -> Ok (Http.Response.body response)
+    | status ->
+        let method' = Http.method_to_string (Http.Request.method' request) in
+        let url = Http.Request.url request in
+        Fmt.error "%s on %s: responded with %d" method' url status
 
-  let doi_uri ~resolver doi = Fmt.str "%s/%s" resolver doi
+  let doi_url ~resolver doi = Fmt.str "%s/%s" resolver doi
 
-  let resolve_to_uri ?(resolver = default_resolver) r doi =
-    let req = Http.req ~uri:(doi_uri ~resolver doi) `GET in
-    Result.bind (Httpr.perform ~follow:false r req) @@ fun resp ->
-    try Ok (List.assoc "location" (Http.resp_headers resp)) with
+  let resolve_to_url ?(resolver = default_resolver) httpc doi =
+    let request = Http.Request.v ~url:(doi_url ~resolver doi) `GET in
+    let* response = Http_client.request ~follow:false httpc request in
+    try Ok (List.assoc "location" (Http.Response.headers response)) with
     | Not_found -> Error "No 'location' header found in response"
 
   let default_bib_format = "application/x-bibtex; charset=utf-8"
   let oneline_bib_format = "text/bibliography; charset=utf-8"
   let resolve_to_bib
-      ?(format = default_bib_format) ?(resolver = default_resolver) r doi
+      ?(format = default_bib_format) ?(resolver = default_resolver) httpc doi
     =
     let headers = ["Accept", format] in
-    let req = Http.req ~headers ~uri:(doi_uri ~resolver doi) `GET in
-    Result.bind (Httpr.perform r req) @@ fun resp ->
-    resp_success req resp
+    let request = Http.Request.v ~headers ~url:(doi_url ~resolver doi) `GET in
+    let* response = Http_client.request httpc request in
+    response_success request response
 end
 
 module Bibdoi = struct
-  open B00_serialk_sexp
+  open B0_sexp
 
   type t = { sexp : Sexp.t; dois : Doi.t list }
   let sexp b = b.sexp
   let dois b = b.dois
 
-  let parse_doi a = match B00_http.Uri.parse_scheme a with
+  let parse_doi a = match B0_http.Url.scheme a with
   | Some ("http" | "https") ->
-      begin match B00_http.Uri.parse_path_and_query a with
+      begin match B0_http.Url.path_and_query a with
       | None -> Fmt.error "%s: could not parse DOI" a
       | Some doi -> Ok doi
       end
@@ -146,7 +148,7 @@ module Bibdoi = struct
   let qdois = Sexpq.list qdoi
 
   let of_string ?(file = Fpath.dash) s =
-    let open B00_serialk_sexp in
+    let open B0_sexp in
     let file = Fpath.to_string file in
     Result.bind (Sexp.seq_of_string' ~file s) @@ fun sexp ->
     Result.bind (Sexpq.query' qdois sexp) @@ fun dois ->
@@ -156,7 +158,9 @@ module Bibdoi = struct
     let rec loop ?resolver r acc = function
     | [] -> String.concat "\n" (List.rev acc)
     | doi :: dois ->
-        let bib = Doi.resolve_to_bib ?resolver r doi |> Result.to_failure in
+        let bib =
+          Doi.resolve_to_bib ?resolver r doi |> Result.error_to_failure
+        in
         loop ?resolver r (bib :: acc) dois
     in
     try Ok (loop ?resolver r [] b.dois) with

@@ -5,15 +5,16 @@ open Fut.Syntax
 
 let cmdliner = B0_ocaml.libname "cmdliner"
 let b0_std = B0_ocaml.libname "b0.std"
-let b0_b00 = B0_ocaml.libname "b0.b00"
-let b0_b00_kit = B0_ocaml.libname "b0.b00.kit"
+let b0_memo = B0_ocaml.libname "b0.memo"
+let b0_file = B0_ocaml.libname "b0.file"
+let b0_kit = B0_ocaml.libname "b0.kit"
 let compiler_libs_common = B0_ocaml.libname "compiler-libs.common"
 
 (* Units *)
 
 let brzo_tool =
   let requires =
-    [cmdliner; b0_std; b0_b00; b0_b00_kit; compiler_libs_common]
+    [cmdliner; b0_std; b0_memo; b0_file; b0_kit; compiler_libs_common]
   in
   let ocaml_cond b =
     (* XXX for this to work we need a corresponding the mli (whatever
@@ -27,7 +28,7 @@ let brzo_tool =
     in
     let scope_dir = B0_build.current_scope_dir b in
     let file = Fpath.(scope_dir / "src-ocaml" / dir / "brzo_read_cmi.ml") in
-    B00.Memo.file_ready (B0_build.memo b) file;
+    B0_memo.file_ready (B0_build.memo b) file;
     Fut.return (Fpath.Set.singleton file)
   in
   let srcs =
