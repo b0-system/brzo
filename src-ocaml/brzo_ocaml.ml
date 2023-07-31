@@ -740,8 +740,9 @@ let html_deps_resolve b deps = Fut.return []
 let pkg_to_html b theme pkg_name cmis ~html_dir md_htmls =
   let mlds = B0_file_exts.(find_files (ext ".mld") b.srcs) in
   let odocs = List.map (cobj_to_odoc b pkg_name) cmis in
-  let mld_odocs = mlds_to_odoc b pkg_name odocs mlds md_htmls in
-  let odoc_files = List.rev_append odocs mld_odocs in
+  let odoc_files = mlds_to_odoc b pkg_name odocs mlds md_htmls in
+  (* mlds_to_odoc already appends odocs
+    let odoc_files = List.rev_append odocs mld_odocs in *)
   let deps_file = Fpath.(b.build_dir / pkg_name + ".html.deps") in
   B0_odoc.Html.Dep.write b.m ~odoc_files b.build_dir ~o:deps_file;
   ignore @@
