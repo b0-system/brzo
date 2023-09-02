@@ -37,17 +37,17 @@ module Fls = struct
       in
       match Fpath.of_string (rem_dot_seg (String.trim p)) with
       | Ok p -> p
-      | Error e -> B0_text_lines.fail i "cannot parse path: %s" e
+      | Error e -> Fmt.failwith_line i " Cannot parse path: %s" e
     in
     let parse_line i l = match String.cut_left ~sep:" " l with
-    | None -> B0_text_lines.fail i "cannot parse line: %S" l
+    | None -> Fmt.failwith_line i " Cannot parse line: %S" l
     | Some ("INPUT", p) -> `Input (parse_path i p)
     | Some ("OUTPUT", p) -> `Output (parse_path i p)
     | Some ("PWD", p) ->
         let p = parse_path i p in
         if Fpath.is_abs p then `Cwd p else
-        B0_text_lines.fail i "PWD directive: %a not absolute" Fpath.pp_quoted p
-    | Some (dir, _) -> B0_text_lines.fail i "unknown directive: %S" dir
+        Fmt.failwith_line i " PWD directive: %a not absolute" Fpath.pp_quoted p
+    | Some (dir, _) -> Fmt.failwith_line i " Unknown directive: %S" dir
     in
     let rec loop i cwd reads writes = function
     | [] -> Ok { reads; writes }
@@ -61,10 +61,12 @@ module Fls = struct
             loop (i + 1) cwd reads (Fpath.Set.add Fpath.(cwd // p) writes) ls
     in
     try
-      let lines = B0_text_lines.of_string s in
-      loop 1 (Fpath.v "/") Fpath.Set.empty Fpath.Set.empty lines
+      (* TODO if there's no muliline parse use fold directly *)
+      let add_line _ acc l = l :: acc in
+      let rlines = String.fold_ascii_lines ~strip_newlines:true add_line [] s in
+      loop 1 (Fpath.v "/") Fpath.Set.empty Fpath.Set.empty (List.rev rlines)
     with
-    | Failure e -> B0_text_lines.file_error ?file e
+    | Failure e -> Fpath.error ?file "%s" e
 end
 
 module Latex = struct
@@ -112,8 +114,8 @@ module Doi = struct
   let doi_url ~resolver doi = Fmt.str "%s/%s" resolver doi
 
   let resolve_to_url ?(resolver = default_resolver) httpc doi =
-    let request = Http.Request.v ~url:(doi_url ~resolver doi) `GET in
-    let* response = Http_client.request ~follow:false httpc request in
+    let request = Http.Request.make ~url:(doi_url ~resolver doi) `GET in
+    let* response = Http_client.fetch ~follow:false httpc request in
     try Ok (List.assoc "location" (Http.Response.headers response)) with
     | Not_found -> Error "No 'location' header found in response"
 
@@ -123,8 +125,9 @@ module Doi = struct
       ?(format = default_bib_format) ?(resolver = default_resolver) httpc doi
     =
     let headers = ["Accept", format] in
-    let request = Http.Request.v ~headers ~url:(doi_url ~resolver doi) `GET in
-    let* response = Http_client.request httpc request in
+    let url = doi_url ~resolver doi in
+    let request = Http.Request.make ~headers ~url `GET in
+    let* response = Http_client.fetch httpc request in
     response_success request response
 end
 

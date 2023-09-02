@@ -10,22 +10,22 @@
 open B0_std
 open Brzo_b0_ocaml
 
-type ambs = [ `Ambs of (B0_ocaml.Mod.Name.t * Fpath.t list) list ]
+type ambs = [ `Ambs of (B0_ocaml.Modname.t * Fpath.t list) list ]
 (** The type for ambiguous external resolutions. The module name
     and the list of files that could match. *)
 
 val resolve_intf_deps :
-  Mod_resolver.t -> local_mods:B0_ocaml.Mod.Src.t B0_ocaml.Mod.Name.Map.t ->
-  in_dir:Fpath.t -> B0_ocaml.Mod.Name.Set.t ->
-  (Fpath.t list * Fpath.t list * B0_ocaml.Mod.Name.Set.t * ambs) Fut.t
+  Mod_resolver.t -> local_mods:B0_ocaml.Modsrc.t B0_ocaml.Modname.Map.t ->
+  in_dir:Fpath.t -> B0_ocaml.Modname.Set.t ->
+  (Fpath.t list * Fpath.t list * B0_ocaml.Modname.Set.t * ambs) Fut.t
 (** [resolve_intf_deps] is like {!resolve_impl_deps} but for compiling
     and interface. *)
 
 val resolve_impl_deps :
-  Mod_resolver.t -> code:B0_ocaml.Conf.code ->
-  local_mods:B0_ocaml.Mod.Src.t B0_ocaml.Mod.Name.Map.t ->
-  in_dir:Fpath.t -> B0_ocaml.Mod.Name.Set.t ->
-  (Fpath.t list * Fpath.t list * B0_ocaml.Mod.Name.Set.t * ambs) Fut.t
+  Mod_resolver.t -> code:B0_ocaml.Code.t ->
+  local_mods:B0_ocaml.Modsrc.t B0_ocaml.Modname.Map.t ->
+  in_dir:Fpath.t -> B0_ocaml.Modname.Set.t ->
+  (Fpath.t list * Fpath.t list * B0_ocaml.Modname.Set.t * ambs) Fut.t
 (** [resolve_comp_deps r ~code ~local_mods ~in_dir deps] resolve
     [deps] for compiling an implementation to [code] assuming local
     module [local_mods] are compiled in [in_dir]. This results in
@@ -39,7 +39,7 @@ val resolve_impl_deps :
     {- [amb] are the external resolutions that were ambiguous.}} *)
 
 val handle_amb_deps :
-  Mod_resolver.t -> Fpath.t -> unresolved:B0_ocaml.Mod.Name.Set.t -> ambs ->
+  Mod_resolver.t -> Fpath.t -> unresolved:B0_ocaml.Modname.Set.t -> ambs ->
   unit Fut.t
 (** [handle_amb_deps file ~unresolved ambs] continues if [ambs] is
     empty and otherwise fails the fiber (* FIXME *) with help on how to restrict
@@ -54,7 +54,7 @@ val handle_miss_user_deps :
 
 (** {1:suggest Suggesting} *)
 
-val suggest_pkgs_for_mod_name : B0_ocaml.Mod.Name.t ->
+val suggest_pkgs_for_modname : B0_ocaml.Modname.t ->
   pkgs:(string * string option) list ->
   [ `Fuzzy_prefix_match of string list | `Prefix_match of string | `None ]
 (** [suggest_package_for_mod_name m pkgs] does basically what it says. *)

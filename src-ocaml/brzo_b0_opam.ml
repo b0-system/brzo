@@ -39,7 +39,8 @@ let list m ?switch which () =
   in
   let* r = run m ?switch "list" Cmd.(which % "--short") in
   let list = Result.bind r @@ fun s ->
-    Ok (B0_text_lines.of_string (String.trim s))
+    let add_pkg _ acc pkg = pkg :: acc in
+    Ok (List.rev (String.fold_ascii_lines ~strip_newlines:true add_pkg [] s))
   in
   let list = B0_memo.fail_if_error m list in
   Fut.return list
@@ -47,23 +48,29 @@ let list m ?switch which () =
 (* FIXME *)
 type pkg = string * string option
 let pkg_list ?switch:s () =
-  let parse_pkg n s acc = match String.cut_left ~sep:" " s with
-  | None -> B0_text_lines.fail n " Cannot parse package from %S" s
-  | Some (pkg, version) ->
-      let pkg = match String.trim version with
-      | "--" -> (String.trim pkg, None)
-      | v -> (String.trim pkg, Some v)
-      in
-      pkg :: acc
+  let parse_pkg n acc s =
+    if s = "" then acc else
+    match String.cut_left ~sep:" " s with
+    | None -> Fmt.failwith_line n " Cannot parse package from %S" s
+    | Some (pkg, version) ->
+        let pkg = match String.trim version with
+        | "--" -> (String.trim pkg, None)
+        | v -> (String.trim pkg, Some v)
+        in
+        pkg :: acc
   in
   Result.bind (Os.Cmd.get opam_bin) @@ fun opam ->
-  let s = match s with None -> Cmd.empty | Some s -> Cmd.(arg "--switch" % s) in
+  let s =
+    match s with None -> Cmd.empty | Some s -> Cmd.(arg "--switch" % s)
+  in
   let list =
     Cmd.(opam % "list" %% s % "--columns=name,installed-version"  %
          "--short" % "--normalise" % "--all")
   in
-  Result.bind (Os.Cmd.run_out ~trim:true list) @@ fun pkg_list ->
-  B0_text_lines.fold pkg_list parse_pkg []
+  Result.bind (Os.Cmd.run_out ~trim:true list) @@ fun s ->
+  try Ok (String.fold_ascii_lines ~strip_newlines:true parse_pkg [] s) with
+  | Failure e -> Fpath.error "%s" e
+
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2018 The brzo programmers

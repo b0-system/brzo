@@ -88,30 +88,30 @@ module Mod_resolver : sig
       [cmi] located along side it. FIXME be principled about that:
       makes as a side effect ready in [memo r]. *)
 
-  val find_cmi_files_for_mod_name : t -> B0_ocaml.Mod.Name.t -> Fpath.t list
-  (** [find_cmi_files_for_mod_name r mn] finds cmi files whose filename could
+  val find_cmi_files_for_modname : t -> B0_ocaml.Modname.t -> Fpath.t list
+  (** [find_cmi_files_for_modname r mn] finds cmi files whose filename could
       resolve to module name [mn]. *)
 
-  val find_cmis_for_mod_name :
-    t -> B0_ocaml.Mod.Name.t -> Brzo_ocaml_cmi.t list Fut.t
-  (** [find_cmis_for_mod_name r mn] finds cmi information for files
+  val find_cmis_for_modname :
+    t -> B0_ocaml.Modname.t -> Brzo_ocaml_cmi.t list Fut.t
+  (** [find_cmis_for_modname r mn] finds cmi information for files
       whose filename could resolve to module name [mn] in [r]. *)
 
-  val find_cmis_for_mod_ref :
-    t -> B0_ocaml.Mod.Ref.t -> Brzo_ocaml_cmi.t list Fut.t
-  (** [find_cmis_for_mod_ref r mref] are the cmis that resolve to [mref]
+  val find_cmis_for_modref :
+    t -> B0_ocaml.Modref.t -> Brzo_ocaml_cmi.t list Fut.t
+  (** [find_cmis_for_modref r mref] are the cmis that resolve to [mref]
       in [r]. *)
 
-  val find_impl_for_mod_ref :
-    t -> ext:string -> B0_ocaml.Mod.Ref.t -> B0_ocaml.Cobj.t option Fut.t
-  (** [find_impl_for_mod_ref r ~ext mref] continues with an
+  val find_impl_for_modref :
+    t -> ext:string -> B0_ocaml.Modref.t -> B0_ocaml.Cobj.t option Fut.t
+  (** [find_impl_for_modref r ~ext mref] continues with an
       implementation file for [mref] with extension [ext] and a
       suitable cmi file to use. *)
 
-  val find_rec_impls_for_mod_refs :
-    ?deps:(B0_ocaml.Cobj.t -> B0_ocaml.Mod.Ref.Set.t) -> t -> ext:string ->
-    B0_ocaml.Mod.Ref.Set.t -> B0_ocaml.Cobj.t list Fut.t
-  (** [find_rec_impls_for_mod_refs ~deps r ~ext mrefs] continues with a list
+  val find_rec_impls_for_modrefs :
+    ?deps:(B0_ocaml.Cobj.t -> B0_ocaml.Modref.Set.t) -> t -> ext:string ->
+    B0_ocaml.Modref.Set.t -> B0_ocaml.Cobj.t list Fut.t
+  (** [find_rec_impls_for_modrefs ~deps r ~ext mrefs] continues with a list
       of implementation files with extentions [ext] for [mref]s and
       their recursive dependencies determined according to [deps]
       (defaults to {!Cobj.link_deps}). The list is sorted in link

@@ -32,7 +32,7 @@ module Memo = struct
     in
     let hook () = write_build_log m in
     Os.Exit.on_sigint ~hook @@ fun () ->
-    let exit, set = Fut.create () in
+    let exit, set = Fut.make () in
     B0_memo.run_proc m
       (fun () -> let* v = fut () in set v; Fut.return ());
     B0_memo.stir m ~block:true;
@@ -615,7 +615,7 @@ module Cli = struct
          info ["brzo-file"] ~absent ~env ~doc ~docv ~docs)
 
   let background = B0_web_browser.background ~docs ()
-  let web_browser = B0_web_browser.browser ~docs ()
+  let web_browser = B0_web_browser.browser ~opts:["browser"] ~docs ()
   let cache_dir = B0_cli.Memo.cache_dir ()
   let cwd =
     let doc =

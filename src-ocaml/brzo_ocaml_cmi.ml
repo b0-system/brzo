@@ -4,32 +4,32 @@
   ---------------------------------------------------------------------------*)
 
 open B0_std
-open B0_std.Fut.Syntax
+open Fut.Syntax
 
 type t =
   { file : Fpath.t;
-    mod_ref : B0_ocaml.Mod.Ref.t;
-    mod_names : B0_ocaml.Mod.Name.Set.t;
-    deps : B0_ocaml.Mod.Ref.Set.t }
+    modref : B0_ocaml.Modref.t;
+    modnames : B0_ocaml.Modname.Set.t;
+    deps : B0_ocaml.Modref.Set.t }
 
 let read m file =
   let* () = B0_memo.wait_files m [file] in
-  let name, digest, mod_names, deps =
+  let name, digest, modnames, deps =
     Brzo_read_cmi.read file |> B0_memo.fail_if_error m
   in
-  let mod_ref = B0_ocaml.Mod.Ref.v name digest in
+  let modref = B0_ocaml.Modref.make name digest in
   let add_dep acc (n, d) =
-    B0_ocaml.Mod.Ref.Set.add (B0_ocaml.Mod.Ref.v n d) acc
+    B0_ocaml.Modref.Set.add (B0_ocaml.Modref.make n d) acc
   in
-  let deps = List.fold_left add_dep B0_ocaml.Mod.Ref.Set.empty deps in
-  Fut.return { file; mod_ref; mod_names; deps }
+  let deps = List.fold_left add_dep B0_ocaml.Modref.Set.empty deps in
+  Fut.return { file; modref; modnames; deps }
 
 let file cmi = cmi.file
-let mod_ref cmi = cmi.mod_ref
-let mod_names cmi = cmi.mod_names
+let modref cmi = cmi.modref
+let modnames cmi = cmi.modnames
 let deps cmi = cmi.deps
 let pp ppf cmi =
-  Fmt.pf ppf "%a %a" B0_ocaml.Mod.Ref.pp cmi.mod_ref Fpath.pp_quoted cmi.file
+  Fmt.pf ppf "%a %a" B0_ocaml.Modref.pp cmi.modref Fpath.pp_quoted cmi.file
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2019 The brzo programmers

@@ -12,44 +12,44 @@ open Brzo_b0_ocaml
    N.B. what these functions do is described in english in manual.mld
    It may help to understand these lines. *)
 
-type ambs = [`Ambs of (B0_ocaml.Mod.Name.t * Fpath.t list) list ]
+type ambs = [`Ambs of (B0_ocaml.Modname.t * Fpath.t list) list ]
 
-let resolve_cmis_mod_refs r cmis mod_refs =
+let resolve_cmis_modrefs r cmis modrefs =
   let rec loop r cmis seen to_find =
-    match B0_ocaml.Mod.Ref.Set.choose_opt to_find with
+    match B0_ocaml.Modref.Set.choose_opt to_find with
     | None -> Fut.return cmis
     | Some dep ->
-        let to_find = B0_ocaml.Mod.Ref.Set.remove dep to_find in
-        if B0_ocaml.Mod.Ref.Set.mem dep seen then loop r cmis seen to_find else
-        let seen = B0_ocaml.Mod.Ref.Set.add dep seen in
+        let to_find = B0_ocaml.Modref.Set.remove dep to_find in
+        if B0_ocaml.Modref.Set.mem dep seen then loop r cmis seen to_find else
+        let seen = B0_ocaml.Modref.Set.add dep seen in
         (* XXX For now let's see what it gives in practice to ignore here
            ambs and not found refs here. Wishfull thinking: I suspect if
            something bad happens the error will show up somewhere else in a
            meaningful way if that's a problem. *)
-        Fut.bind (Mod_resolver.find_cmis_for_mod_ref r dep) @@ function
+        Fut.bind (Mod_resolver.find_cmis_for_modref r dep) @@ function
         | cmi :: _ ->
             let to_find =
-              B0_ocaml.Mod.Ref.Set.union (Brzo_ocaml_cmi.deps cmi) to_find
+              B0_ocaml.Modref.Set.union (Brzo_ocaml_cmi.deps cmi) to_find
             in
             loop r (cmi :: cmis) seen to_find
         | [] -> loop r cmis seen to_find
   in
   let seen, to_find =
     let rec loop seen to_find = function
-    | [] -> seen, B0_ocaml.Mod.Ref.Set.diff to_find seen
+    | [] -> seen, B0_ocaml.Modref.Set.diff to_find seen
     | cmi :: cmis ->
-        let seen = B0_ocaml.Mod.Ref.Set.add (Brzo_ocaml_cmi.mod_ref cmi) seen in
+        let seen = B0_ocaml.Modref.Set.add (Brzo_ocaml_cmi.modref cmi) seen in
         let to_find =
-          B0_ocaml.Mod.Ref.Set.union to_find (Brzo_ocaml_cmi.deps cmi)
+          B0_ocaml.Modref.Set.union to_find (Brzo_ocaml_cmi.deps cmi)
         in
         loop seen to_find cmis
     in
-    loop B0_ocaml.Mod.Ref.Set.empty mod_refs cmis
+    loop B0_ocaml.Modref.Set.empty modrefs cmis
   in
   loop r cmis seen to_find
 
-let resolution_cmis_dep_objs r ~code cmis mod_refs =
-  let* cmis = resolve_cmis_mod_refs r cmis mod_refs in
+let resolution_cmis_dep_objs r ~code cmis modrefs =
+  let* cmis = resolve_cmis_modrefs r cmis modrefs in
   let add_dep_objs acc cmi =
     let acc = Brzo_ocaml_cmi.file cmi :: acc in
     if code = `Byte then acc else
@@ -58,60 +58,59 @@ let resolution_cmis_dep_objs r ~code cmis mod_refs =
   in
   Fut.return (List.fold_left add_dep_objs [] cmis)
 
-let finish_impl_resolution r ~code cmis mod_refs ambs remain =
-  let* objs = resolution_cmis_dep_objs r ~code cmis mod_refs in
+let finish_impl_resolution r ~code cmis modrefs ambs remain =
+  let* objs = resolution_cmis_dep_objs r ~code cmis modrefs in
   Fut.return (objs, remain, (`Ambs ambs))
 
-let resolve_external_impl_deps r ~code deps mod_refs =
+let resolve_external_impl_deps r ~code deps modrefs =
   let rec loop r changed cmis ambs resolved retry todo =
-    match B0_ocaml.Mod.Name.Set.choose_opt todo with
+    match B0_ocaml.Modname.Set.choose_opt todo with
     | None ->
-        let retry = B0_ocaml.Mod.Name.Set.diff retry resolved in
-        if B0_ocaml.Mod.Name.Set.is_empty retry || not changed
-        then (finish_impl_resolution r ~code cmis mod_refs ambs retry)
-        else (loop r false cmis [] resolved B0_ocaml.Mod.Name.Set.empty retry)
+        let retry = B0_ocaml.Modname.Set.diff retry resolved in
+        if B0_ocaml.Modname.Set.is_empty retry || not changed
+        then (finish_impl_resolution r ~code cmis modrefs ambs retry)
+        else (loop r false cmis [] resolved B0_ocaml.Modname.Set.empty retry)
     | Some dep ->
-        let todo = B0_ocaml.Mod.Name.Set.remove dep todo in
-        if B0_ocaml.Mod.Name.Set.mem dep resolved
+        let todo = B0_ocaml.Modname.Set.remove dep todo in
+        if B0_ocaml.Modname.Set.mem dep resolved
         then loop r changed cmis ambs resolved retry todo else
-        match Mod_resolver.find_cmi_files_for_mod_name r dep with
+        match Mod_resolver.find_cmi_files_for_modname r dep with
         | [] ->
             loop r changed cmis ambs resolved
-              (B0_ocaml.Mod.Name.Set.add dep retry) todo
+              (B0_ocaml.Modname.Set.add dep retry) todo
         | [cmi] ->
             let* cmi_obj = Mod_resolver.cmi_obj r cmi in
-            let cmi_names = Brzo_ocaml_cmi.mod_names cmi_obj in
+            let cmi_names = Brzo_ocaml_cmi.modnames cmi_obj in
             let resolved = String.Set.union resolved cmi_names in
             loop r true (cmi_obj :: cmis) ambs resolved retry todo
         | cmi_files ->
             let ambs = (dep, cmi_files) :: ambs in
             loop r changed cmis ambs resolved
-              (B0_ocaml.Mod.Name.Set.add dep retry) todo
+              (B0_ocaml.Modname.Set.add dep retry) todo
   in
   loop r false [] []
-    B0_ocaml.Mod.Name.Set.empty B0_ocaml.Mod.Name.Set.empty deps
+    B0_ocaml.Modname.Set.empty B0_ocaml.Modname.Set.empty deps
 
 let resolve_impl_deps r ~code ~local_mods ~in_dir deps =
-  let prune_cmis_mod_names r deps reads =
-    let rec loop b deps mod_refs = function
-    | [] -> Fut.return (deps, mod_refs)
+  let prune_cmis_modnames r deps reads =
+    let rec loop b deps modrefs = function
+    | [] -> Fut.return (deps, modrefs)
     | obj :: reads ->
-        if not (Fpath.has_ext ".cmi" obj) then loop b deps mod_refs reads else
+        if not (Fpath.has_ext ".cmi" obj) then loop b deps modrefs reads else
         let* cmi_obj = Mod_resolver.cmi_obj r obj in
-        let deps = String.Set.diff deps (Brzo_ocaml_cmi.mod_names cmi_obj) in
-        let mod_refs =
-          B0_ocaml.Mod.Ref.Set.union mod_refs (Brzo_ocaml_cmi.deps cmi_obj)
+        let deps = String.Set.diff deps (Brzo_ocaml_cmi.modnames cmi_obj) in
+        let modrefs =
+          B0_ocaml.Modref.Set.union modrefs (Brzo_ocaml_cmi.deps cmi_obj)
         in
-        loop b deps mod_refs reads
+        loop b deps modrefs reads
     in
-    loop r deps B0_ocaml.Mod.Ref.Set.empty reads
+    loop r deps B0_ocaml.Modref.Set.empty reads
   in
-  let local_mods, deps = B0_ocaml.Mod.Src.find deps local_mods in
-  let add_mod acc m = B0_ocaml.Mod.Src.as_impl_dep_files ~init:acc ~code m in
+  let local_mods, deps = B0_ocaml.Modsrc.find deps local_mods in
+  let add_mod acc m = B0_ocaml.Modsrc.as_impl_dep_files ~init:acc ~code m in
   let local_objs = List.fold_left add_mod [] local_mods in
-  let* deps, mod_refs = prune_cmis_mod_names r deps local_objs in
-  let* ext_objs, deps, ambs = resolve_external_impl_deps r ~code deps mod_refs
-  in
+  let* deps, modrefs = prune_cmis_modnames r deps local_objs in
+  let* ext_objs, deps, ambs = resolve_external_impl_deps r ~code deps modrefs in
   Fut.return (local_objs, ext_objs, deps, ambs)
 
 let resolve_intf_deps r ~local_mods ~in_dir deps =
@@ -125,13 +124,13 @@ let handle_amb_deps r file ~unresolved (`Ambs ambs) = match ambs with
 | [] -> Fut.return ()
 | ambs ->
     let pp_unresolved ppf deps = (* FIXME maybe try to indicate installs *)
-      let deps = B0_ocaml.Mod.Name.Set.elements deps in
+      let deps = B0_ocaml.Modname.Set.elements deps in
       if deps = [] then () else
       let mod_txt = match deps with [_] -> "Module" | _ -> "Modules" in
       Fmt.pf ppf
         "@[%s %a@ could@ not@ be@ resolved.@ \
          Maybe@ due@ to@ the@ following@ ambiguous@ resolutions.@]@."
-        mod_txt (Fmt.list ~sep:Fmt.sp B0_ocaml.Mod.Name.pp) deps
+        mod_txt (Fmt.list ~sep:Fmt.sp B0_ocaml.Modname.pp) deps
     in
     let pp_alt ppf cmi =
       let dep = Option.get (Mod_resolver.dep_of_file r cmi) in
@@ -143,7 +142,7 @@ let handle_amb_deps r file ~unresolved (`Ambs ambs) = match ambs with
       Fmt.pf ppf
         "@[<v>Module %a has multiple dependency resolutions.@,\
          Try one of the following dependency restrictions:@,@,@[<v>%a@]@,@]"
-        B0_ocaml.Mod.Name.pp dep Fmt.(list pp_alt) cmis
+        B0_ocaml.Modname.pp dep Fmt.(list pp_alt) cmis
     in
     B0_memo.fail (Mod_resolver.memo r)
       "@[<v>File %a:@,%a%a@]" Fpath.pp_unquoted file
@@ -220,7 +219,7 @@ let handle_miss_user_deps r (`Miss_deps miss_deps) = match miss_deps with
 
 (* Suggesting alternatives for unresolved *)
 
-let suggest_pkgs_for_mod_name m ~pkgs =
+let suggest_pkgs_for_modname m ~pkgs =
   let normalize_char = function '-' -> '_' | c -> Char.Ascii.lowercase c in
   let normalize_id id = String.map normalize_char id in
   let rec normalize_pkgs ipkgs upkgs real_names = function

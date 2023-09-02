@@ -218,9 +218,9 @@ let find_doxyfile m c dc = match Conf.doxyfile dc with
 
 let vcs_version ~root =
   Log.if_error ~use:"" @@
-  Result.bind (B0_vcs.find ~dir:root ()) @@ function
+  Result.bind (B0_vcs_repo.find ~dir:root ()) @@ function
   | None -> Ok ""
-  | Some vcs -> B0_vcs.describe vcs ~dirty_mark:true "HEAD"
+  | Some vcs -> B0_vcs_repo.describe vcs ~dirty_mark:true "HEAD"
 
 let write_doxyfile m c dc ~out_dir ~srcs ~o =
   ignore @@ match find_doxyfile m c dc with

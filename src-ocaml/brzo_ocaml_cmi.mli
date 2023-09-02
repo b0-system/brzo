@@ -16,16 +16,16 @@ val read : B0_memo.t -> Fpath.t -> t Fut.t
 val file : t -> Fpath.t
 (** [file cmi] is the file path of [cmi]. *)
 
-val mod_ref : t -> B0_ocaml.Mod.Ref.t
-(** [mod_ref cmi] is the module reference of [cmi]. *)
+val modref : t -> B0_ocaml.Modref.t
+(** [modref cmi] is the module reference of [cmi]. *)
 
-val deps : t -> B0_ocaml.Mod.Ref.Set.t
+val deps : t -> B0_ocaml.Modref.Set.t
 (** [deps cmi] is the set of modules interfaces imported by [cmi]. *)
 
-val mod_names : t -> B0_ocaml.Mod.Name.Set.t
-(** [mod_names cmi] are the unqualified module names defined by
-        [cmi] (including its name). Sligthly wrong because stops at module
-        aliases, these are not resolved to further cmis. *)
+val modnames : t -> B0_ocaml.Modname.Set.t
+(** [modnames cmi] are the unqualified module names defined by
+    [cmi] (including its name). Sligthly wrong because stops at module
+    aliases, these are not resolved to further cmis. *)
 
 val pp : t Fmt.t
 (** [pp] formats a compiled interface. *)
