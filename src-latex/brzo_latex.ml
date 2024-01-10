@@ -11,7 +11,7 @@ open Brzo_b0_latex
 module Conf = struct
   type t =
     { curl : Cmd.t;
-      doi_resolver : B0_http.Url.t;
+      doi_resolver : Url.t;
       main : Fpath.t option; }
 
   let curl c = c.curl
@@ -75,9 +75,9 @@ let fingerprint = B0_file_exts.latex_lang
 
 let bibdoi_to_bib m c dc bibdoi =
   let bib = Fpath.(bibdoi -+ ".bib") in
-  let httpr = B0_http.Http_client.get ~curl:dc.Conf.curl () in
+  let httpr = B0_http.Http_client.get ~cmd:dc.Conf.curl () in
   begin
-    B0_memo.file_ready m bibdoi;
+    B0_memo.ready_file m bibdoi;
     ignore @@
     let* contents = B0_memo.read m bibdoi in
     begin
@@ -122,7 +122,9 @@ let find_main m c dc ~texs =
           match find_basename "main.tex" texs with
           | Some t -> Fut.return t
           | None ->
-              let root_name = Fpath.basename ~no_ext:true (Brzo.Conf.root c) in
+              let root_name =
+                Fpath.basename ~strip_ext:true (Brzo.Conf.root c)
+              in
               match find_basename (Fmt.str "%s.tex" root_name) texs with
               | Some t -> Fut.return t
               | None -> not_found m
@@ -151,21 +153,21 @@ let exec_build m c dc ~build_dir ~artefact ~srcs =
   let _aux = Fpath.(artefact -+ ".aux") in
   let _toc = Fpath.(artefact -+ ".toc") in
   let _out = Fpath.(artefact -+ ".out") in
-  List.iter (B0_memo.file_ready m) stys;
-  List.iter (B0_memo.file_ready m) texs;
-  List.iter (B0_memo.file_ready m) bibs;
+  B0_memo.ready_files m stys;
+  B0_memo.ready_files m texs;
+  B0_memo.ready_files m bibs;
   let cli =
     Cmd.(arg "-file-line-error" % "-halt-on-error" %
          "-interaction=nonstopmode" %
          "-output-directory" %% path build_dir %
-         "-jobname" % Fpath.basename ~no_ext:true artefact %%
+         "-jobname" % Fpath.basename ~strip_ext:true artefact %%
          path main)
   in
   let reads =
     List.(rev_append (rev_append bibs doibibs) (rev_append texs stys))
   in
   (* FIXME fixpoint *)
-  let k _ = Os.Cmd.run Cmd.(arg "xelatex" %% cli) |> Result.get_ok in
+  let k _ _ = Os.Cmd.run Cmd.(arg "xelatex" %% cli) |> Result.get_ok in
   B0_memo.spawn m ~k ~reads ~writes:[] @@
   xelatex cli;
   Fut.return ()
@@ -360,14 +362,14 @@ let listing_build m c _ ~build_dir ~artefact ~srcs =
   let aux = Fpath.(artefact -+ ".aux") in
   let toc = Fpath.(artefact -+ ".toc") in
   let out = Fpath.(artefact -+ ".out") in
-  List.iter (B0_memo.file_ready m) srcs;
+  B0_memo.ready_files m srcs;
   write_listing m ~src_root srcs ~o:doc_file;
   let cli = Cmd.(arg "-file-line-error" % "-halt-on-error" %
                  "-interaction=nonstopmode" %
                  "-output-directory" %% path build_dir %% path doc_file)
   in
   (* FIXME fixpoint *)
-  let k _ = Os.Cmd.run Cmd.(arg "xelatex" %% cli) |> Result.get_ok in
+  let k _ _ = Os.Cmd.run Cmd.(arg "xelatex" %% cli) |> Result.get_ok in
   B0_memo.spawn m ~reads:(doc_file :: srcs) ~writes:[artefact; aux; toc; out] ~k
   @@ xelatex cli;
   Fut.return ()

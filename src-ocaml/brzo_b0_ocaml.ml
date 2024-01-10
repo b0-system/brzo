@@ -117,7 +117,7 @@ module Mod_resolver = struct
   let find_cmi_side_cmx_file r cmi =
     let cmx = Fpath.(Brzo_ocaml_cmi.file cmi -+ ".cmx") in
     if not (Fpath.Set.mem cmx (B0_findex.files r.index)) then None else
-    (B0_memo.file_ready r.m cmx; Some cmx)
+    (B0_memo.ready_file r.m cmx; Some cmx)
 
   let find_cmi_files_for_modname r mname =
     let upper_cmi = Fmt.str "%s.cmi" mname in
@@ -125,7 +125,7 @@ module Mod_resolver = struct
     let find r n = B0_findex.find_filename r.index n in
     let cmi_files = List.rev_append (find r upper_cmi) (find r lower_cmi) in
     let cmi_files = restrict_results r cmi_files in
-    List.iter (B0_memo.file_ready r.m) cmi_files; cmi_files
+    B0_memo.ready_files r.m cmi_files; cmi_files
 
   let find_cmis_for_modname r mname =
     let cmis = find_cmi_files_for_modname r mname in
@@ -161,9 +161,10 @@ module Mod_resolver = struct
           let uniq = Hash.to_hex (B0_memo.hash_string r.m (Fpath.to_string dir)) in
           Fpath.(r.memo_dir / Fmt.str "%s-%s%s.info" base uniq ext)
         in
-        List.iter (B0_memo.file_ready r.m) cobjs;
+        B0_memo.ready_files r.m cobjs;
         if ext = ".cmxa" then begin
-          List.iter (fun o -> B0_memo.file_ready r.m (Fpath.set_ext ".a" o)) cobjs
+          List.iter
+            (fun o -> B0_memo.ready_file r.m (Fpath.set_ext ".a" o)) cobjs
         end;
         B0_ocaml.Cobj.write r.m ~cobjs ~o;
         let* cobjs = B0_ocaml.Cobj.read r.m o in

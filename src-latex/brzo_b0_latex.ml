@@ -27,7 +27,7 @@ module Fls = struct
   type t = { reads : Fpath.Set.t; writes : Fpath.Set.t }
   let reads f = f.reads
   let writes f = f.writes
-  let of_string ?file s =
+  let of_string ?(file = Fpath.dash) s =
     let parse_path i p =
       let rem_dot_seg s =
         (* Sometimes paths seem to show up with a leading ./ *)
@@ -66,7 +66,7 @@ module Fls = struct
       let rlines = String.fold_ascii_lines ~strip_newlines:true add_line [] s in
       loop 1 (Fpath.v "/") Fpath.Set.empty Fpath.Set.empty (List.rev rlines)
     with
-    | Failure e -> Fpath.error ?file "%s" e
+    | Failure e -> Fpath.error file "%s" e
 end
 
 module Latex = struct
@@ -138,9 +138,9 @@ module Bibdoi = struct
   let sexp b = b.sexp
   let dois b = b.dois
 
-  let parse_doi a = match B0_http.Url.scheme a with
+  let parse_doi a = match Url.scheme a with
   | Some ("http" | "https") ->
-      begin match B0_http.Url.path_and_query a with
+      begin match Url.path_and_query a with
       | None -> Fmt.error "%s: could not parse DOI" a
       | Some doi -> Ok doi
       end

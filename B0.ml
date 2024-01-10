@@ -14,7 +14,7 @@ let compiler_libs_common = B0_ocaml.libname "compiler-libs.common"
 
 let brzo_tool =
   let ocaml_cond b =
-    (* XXX for this to work we need a corresponding the mli (whatever
+    (* TODO for this to work we need a corresponding the mli (whatever
        the content) in the directories with the
        implementation. Toolchain idiosyncrasies strike again
        https://github.com/ocaml/ocaml/issues/9717 *)
@@ -23,9 +23,9 @@ let brzo_tool =
     | v when v < (3, 08, 0, None) -> "brzo_read_cmi_pre_408"
     | _ -> "brzo_read_cmi_geq_408"
     in
-    let scope_dir = B0_build.current_scope_dir b in
+    let scope_dir = B0_build.scope_dir b in
     let file = Fpath.(scope_dir / "src-ocaml" / dir / "brzo_read_cmi.ml") in
-    B0_memo.file_ready (B0_build.memo b) file;
+    B0_memo.ready_file (B0_build.memo b) file;
     Fut.return (Fpath.Set.singleton file)
   in
   let requires =

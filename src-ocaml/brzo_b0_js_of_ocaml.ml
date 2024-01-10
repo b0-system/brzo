@@ -116,7 +116,8 @@ body { background: #181B20; color: #8C8D90; }
       ?(toplevel_css = false) ?(generator = "") ?(lang = "") ?(scripts = [])
       ?(styles = []) ?(title = "") m ~o
     =
-    let title = if title = "" then Fpath.basename ~no_ext:true o else title in
+    let title = if title = ""
+      then Fpath.basename ~strip_ext:true o else title in
     let stamp =
       String.concat ""
         (string_of_bool toplevel_css :: generator :: lang :: title ::

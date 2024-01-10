@@ -55,27 +55,29 @@ let get o os = try List.find (fun o' -> String.equal o (name o')) os with
 (* Predefined actions *)
 
 module Action = struct
+  open Result.Syntax
+
   let exec m c _ ~build_dir:_ ~artefact =
     Fut.return @@ fun () ->
     let action_args = Brzo.Conf.action_args c in
     let cmd = Cmd.(path artefact %% list action_args) in
-    Ok (Os.Exit.exec artefact cmd)
+    Ok (Os.Exit.exec cmd)
 
   let show_pdf m c _ ~build_dir:_ ~artefact =
     Fut.return @@ fun () ->
-    let pdf_viewer = Brzo.Conf.pdf_viewer c in
-    Result.bind (B0_pdf_viewer.find ~pdf_viewer ()) @@ fun pdf_viewer ->
-    Result.bind (B0_pdf_viewer.show pdf_viewer artefact) @@
-    fun () -> Ok Brzo.Exit.ok
+    let cmd = Brzo.Conf.pdf_viewer c in
+    let* pdf_viewer = B0_pdf_viewer.find ?cmd () in
+    let* () = B0_pdf_viewer.show pdf_viewer artefact in
+    Ok Brzo.Exit.ok
 
   let show_uri m c _ ~build_dir:_ ~artefact =
     Fut.return @@ fun () ->
-    let uri = Fmt.str "file://%s" (Fpath.to_string artefact) in
+    let url = Fmt.str "file://%s" (Fpath.to_string artefact) in
     let browser = Brzo.Conf.web_browser c in
     let background = Brzo.Conf.background c in
-    Result.bind (B0_web_browser.find ~browser ()) @@ fun browser ->
-    Result.bind (B0_web_browser.show ~background ~prefix:true browser uri) @@
-    fun () -> Ok Brzo.Exit.ok
+    let* browser = B0_web_browser.find ?cmd:browser () in
+    let* () = B0_web_browser.show ~background ~prefix:true browser url in
+    Ok Brzo.Exit.ok
 end
 
 (*---------------------------------------------------------------------------

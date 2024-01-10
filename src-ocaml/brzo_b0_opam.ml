@@ -12,7 +12,7 @@ let opam_bin = Cmd.arg "opam"
 (* FIXME memo is used here but only for future proofing but we should
    really use it. Also we need an easy no caching option spawns in Memo. *)
 
-let exists m = match Os.Cmd.find opam_bin |> B0_memo.fail_if_error m with
+let exists m = match Os.Cmd.find opam_bin with
 | None -> Fut.return false | Some _ -> Fut.return true
 
 let if_exists m f =
@@ -69,7 +69,7 @@ let pkg_list ?switch:s () =
   in
   Result.bind (Os.Cmd.run_out ~trim:true list) @@ fun s ->
   try Ok (String.fold_ascii_lines ~strip_newlines:true parse_pkg [] s) with
-  | Failure e -> Fpath.error "%s" e
+  | Failure e -> Fpath.error Fpath.dash "%s" e
 
 
 (*---------------------------------------------------------------------------

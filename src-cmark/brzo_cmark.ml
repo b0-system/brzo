@@ -31,10 +31,10 @@ let md_to_html m ~src_root ~build_dir ~html_dir ~js_files ~css_files md =
   let to_dir = Fpath.parent md in
   let scripts = urls_rel ~to_dir ~files:js_files in
   let styles = urls_rel ~to_dir ~files:css_files in
-  let o_frag = Fpath.(reroot ~root:src_root ~dst:build_dir md -+ ".htmlf") in
-  let o = Fpath.(reroot ~root:src_root ~dst:html_dir md -+ ".html") in
+  let o_frag = Fpath.(reroot ~src_root ~dst_root:build_dir md -+ ".htmlf") in
+  let o = Fpath.(reroot ~src_root ~dst_root:html_dir md -+ ".html") in
   let opts = Cmd.empty in
-  B0_memo.file_ready m md;
+  B0_memo.ready_file m md;
   B0_cmark.to_html m ~opts ~mds:[md] ~generator ~scripts ~styles ~o_frag ~o
 
 let build_web m c _ ~build_dir ~artefact ~srcs =

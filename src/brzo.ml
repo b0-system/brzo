@@ -11,9 +11,9 @@ module Memo = struct
   open B0_std.Fut.Syntax
 
   let copy_file m ~src_root ~dst_root src =
-    let dst = Fpath.reroot ~root:src_root ~dst:dst_root src in
-    B0_memo.file_ready m src;
-    B0_memo.copy m ~src dst
+    let dst = Fpath.reroot ~src_root ~dst_root src in
+    B0_memo.ready_file m src;
+    B0_memo.copy m src ~dst
 
   let ensure_exec_build m ~srcs ~need_ext =
     match B0_file_exts.find_files B0_file_exts.(ext need_ext) srcs = [] with
@@ -248,10 +248,10 @@ module Conf = struct
           if Fpath.Set.mem i seen then acc else
           let acc = Fpath.Set.add i seen, by_ext in
           if not (Os.Dir.exists i |> Result.error_to_failure) then acc else
-          let prune _ dname dir (seen, _) =
+          let prune_dir _ dname dir (seen, _) =
             exclude dname dir || Fpath.Set.mem dir seen
           in
-          Os.Dir.fold ~dotfiles:true ~prune ~recurse:true
+          Os.Dir.fold ~dotfiles:true ~prune_dir ~recurse:true
             add i acc |> Result.error_to_failure
     in
     let srcs_i = Fpath.Set.elements srcs_i in

@@ -48,7 +48,7 @@ end
 
 module Compile : sig
   val c_to_o :
-    ?post_exec:(B0_zero.Op.t -> unit) -> ?k:(int -> unit) ->
+    ?post_exec:(B0_zero.Op.t -> unit) -> ?k:(B0_zero.Op.t -> int -> unit) ->
     ?args:B0_std.Cmd.t -> B0_memo.t -> deps:Fpath.t list -> c:Fpath.t ->
     o:Fpath.t -> unit
   (** [c_to_o m ~deps ~c ~o] compiles [c] to the object file [o]
@@ -58,7 +58,7 @@ end
 module Link : sig
 
   val exe :
-    ?post_exec:(B0_zero.Op.t -> unit) -> ?k:(int -> unit) ->
+    ?post_exec:(B0_zero.Op.t -> unit) -> ?k:(B0_zero.Op.t -> int -> unit) ->
     ?args:B0_std.Cmd.t -> B0_memo.t -> objs:Fpath.t list -> o:Fpath.t ->
     unit
     (** [exe m ~args ~objs ~o] links the objects [objs] into executable [o]. *)

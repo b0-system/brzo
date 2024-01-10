@@ -99,11 +99,11 @@ let compile_src b ~in_dir ~obj_ext ~deps cname c =
   let d = Fpath.(in_dir / Fmt.str "%s%s" cname ".d") in
   let o = Fpath.(in_dir / Fmt.str "%s%s" cname obj_ext) in
   begin
-    B0_memo.file_ready b.m c;
+    B0_memo.ready_file b.m c;
     Inc_deps.write b.m ~src:c ~o:d;
     ignore @@
     let* deps = Inc_deps.read b.m ~src:c d in
-    List.iter (B0_memo.file_ready b.m) deps;
+    B0_memo.ready_files b.m deps;
     Compile.c_to_o ~args:default_flags b.m ~deps ~c ~o;
     Fut.return ()
   end;
@@ -114,7 +114,7 @@ let compile_srcs b ~in_dir =
   let rec loop os cunits hs = function
   | [] -> Fut.return os
   | c :: cs ->
-      let cname = Fpath.basename ~no_ext:true c in
+      let cname = Fpath.basename ~strip_ext:true c in
       match String.Map.find cname cunits with
       | exception Not_found ->
           let o = compile_src b ~in_dir ~obj_ext ~deps:hs cname c in
@@ -129,7 +129,7 @@ let compile_srcs b ~in_dir =
   in
   let hs = B0_file_exts.(find_files (ext ".h") b.srcs) in
   let cs = B0_file_exts.(find_files (ext ".c") b.srcs) in
-  List.iter (B0_memo.file_ready b.m) hs;
+  B0_memo.ready_files b.m hs;
   loop [] String.Map.empty hs cs
 
 let build_exe b ~exe =
@@ -225,7 +225,7 @@ let vcs_version ~root =
 let write_doxyfile m c dc ~out_dir ~srcs ~o =
   ignore @@ match find_doxyfile m c dc with
   | Some doxyfile ->
-      B0_memo.file_ready m doxyfile;
+      B0_memo.ready_file m doxyfile;
       let* doxy =  B0_memo.read m doxyfile in
       let doxy = override_doxyfile ~out_dir ~srcs doxy in
       (B0_memo.write m ~reads:[doxyfile] ~stamp:doxy o @@ fun () -> Ok doxy);
@@ -257,7 +257,7 @@ let doc_build m c dc ~build_dir ~artefact ~srcs =
   let out_dir = Fpath.(build_dir / "o") in
   let srcs_exts = B0_file_exts.(ext ".md" + ext ".h" + ext ".c") in
   let srcs = B0_file_exts.find_files srcs_exts srcs in
-  List.iter (B0_memo.file_ready m) srcs;
+  B0_memo.ready_files m srcs;
   let doxyfile = Fpath.(build_dir / "Doxyfile") in
   write_doxyfile m c dc ~out_dir ~srcs ~o:doxyfile;
   let doxygen = B0_memo.tool m Brzo_b0_doxygen.Tool.doxygen in
