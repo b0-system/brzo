@@ -3,6 +3,7 @@ open Fut.Syntax
 
 (* OCaml library names *)
 
+let unix = B0_ocaml.libname "unix"
 let cmdliner = B0_ocaml.libname "cmdliner"
 let b0_std = B0_ocaml.libname "b0.std"
 let b0_memo = B0_ocaml.libname "b0.memo"
@@ -29,12 +30,14 @@ let brzo_tool =
     Fut.return (Fpath.Set.singleton file)
   in
   let requires =
-    [cmdliner; b0_std; b0_memo; b0_file; b0_kit; compiler_libs_common]
+    [cmdliner; unix; b0_std; b0_memo; b0_file; b0_kit; compiler_libs_common]
   in
   let srcs =
     [`Dir ~/"src"; `Dir ~/"src-c";
      `Dir ~/"src-cmark"; `Dir ~/"src-latex";
-     `Dir ~/"src-ocaml"; `Fut ocaml_cond]
+     `Dir ~/"src-ocaml"; `Fut ocaml_cond;
+     `X ~/"src-ocaml/brzo_read_cmi.ml"; (* Remove when we rid of topkg *)
+     ]
   in
   B0_ocaml.exe "brzo" ~public:true ~doc:"brzo tool" ~requires ~srcs
 
