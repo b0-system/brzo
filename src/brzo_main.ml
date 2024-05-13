@@ -65,12 +65,11 @@ let tool =
     ~default:Brzo_cmd_default.term cmds
 
 let main () =
-  B0_cli.Exit.exit ~exec_error:Brzo.Exit.some_error @@
   Log.time (fun _ m -> m "total time brzo %%VERSION%%") @@ fun () ->
   B0_cli.Exit.of_eval_result ~term_error:Brzo.Exit.conf_error @@
   Cmd.eval_value tool
 
-let () = if !Sys.interactive then () else main ()
+let () = if !Sys.interactive then () else Os.Exit.exit (main ())
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2018 The brzo programmers

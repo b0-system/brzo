@@ -61,7 +61,7 @@ module Action = struct
     Fut.return @@ fun () ->
     let action_args = Brzo.Conf.action_args c in
     let cmd = Cmd.(path artefact %% list action_args) in
-    Ok (Os.Exit.exec cmd)
+    Ok (Os.Exit.execv cmd)
 
   let show_pdf m c _ ~build_dir:_ ~artefact =
     Fut.return @@ fun () ->

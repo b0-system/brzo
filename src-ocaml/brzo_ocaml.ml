@@ -128,7 +128,7 @@ let compile_c_srcs b ~comp ~opts ~in_dir =
       | exception Not_found ->
           let o = Fpath.(in_dir / Fmt.str "%s%s" cname obj_ext) in
           B0_memo.ready_file b.m c;
-          B0_ocaml.Compile.c_to_o b.m ~comp ~opts ~reads:hs ~c ~o;
+          ignore @@ B0_ocaml.Compile.c_to_o b.m ~comp ~opts ~reads:hs ~c ~o;
           loop (o :: os) (String.Map.add cname c cunits) hs cs
       | f ->
           B0_memo.notify b.m `Warn
@@ -157,7 +157,7 @@ let compile_intf b ~comp ~opts ~build_dir ~local_mods msrc =
         let* () = Brzo_ocaml_be.handle_amb_deps b.r mli ~unresolved ambs in
         let reads = List.rev_append local_objs ext_objs in
         let post_exec = mention_unresolved_on_fail unresolved in
-        B0_ocaml.Compile.mli_to_cmi
+        ignore @@ B0_ocaml.Compile.mli_to_cmi
           b.m ~post_exec ~comp ~opts ~reads ~mli ~o ~and_cmti:true;
         Fut.return ()
       end;
@@ -183,7 +183,7 @@ let compile_impl b ~code ~opts ~build_dir ~local_mods msrc =
         in
         let reads = List.rev_append ext_objs local_objs in
         let post_exec = mention_unresolved_on_fail unresolved in
-        B0_ocaml.Compile.ml_to_impl b.m
+        ignore @@ B0_ocaml.Compile.ml_to_impl b.m
           ~post_exec ~code ~opts ~has_cmi ~reads ~ml ~o ~and_cmt:true;
         Fut.return ()
       end;
@@ -374,7 +374,7 @@ let exec_node_action m c dc ~build_dir ~artefact =
   let action_args = Brzo.Conf.action_args c in
   Result.bind (Os.Cmd.get (Cmd.tool "node")) @@ fun node ->
   let cmd = Cmd.(node %% path artefact %% list (action_args)) in
-  Ok (Os.Exit.exec cmd)
+  Ok (Os.Exit.execv cmd)
 
 let exec_target m dc =
   let t = Brzo_ocaml_conf.target dc in
@@ -474,7 +474,7 @@ let run_top_cmd m c top_cmd =
       let aargs = Brzo.Conf.action_args c in
       match Os.Cmd.get (Cmd.tool cmd) with
       | Error _ as e -> e
-      | Ok cmd -> Ok (Os.Exit.exec Cmd.(cmd %% list args %% list aargs))
+      | Ok cmd -> Ok (Os.Exit.execv Cmd.(cmd %% list args %% list aargs))
 
 let cobjs_incs objs =
   (* This may not work with library variant depending on how they
@@ -492,20 +492,21 @@ let build_top b ~code ~top ~artefact =
   let* c_objs, cobjs = compile_srcs b ~code ~opts ~build_dir:in_dir in
   let has_cstubs = c_objs <> [] in
   if has_cstubs
-  then B0_ocaml.Archive.cstubs b.m
-      ~conf:b.ocaml_conf ~opts ~c_objs ~odir:in_dir ~oname;
+  then (ignore @@ B0_ocaml.Archive.cstubs b.m
+      ~conf:b.ocaml_conf ~opts ~c_objs ~odir:in_dir ~oname);
   let* cobjs, ext_cobjs = find_link_deps b ~in_dir ~code cobjs in
   let cobjs =
     List.map B0_ocaml.Cobj.file cobjs and incs = cobjs_incs ext_cobjs
   in
   write_merlin_file b;
+  ignore @@
   B0_ocaml.Archive.code
     b.m ~conf:b.ocaml_conf ~code ~opts ~has_cstubs ~cobjs ~odir:in_dir ~oname;
   begin match code with
   | `Byte -> ()
   | `Native ->
       let cmxa = Fpath.(in_dir / Fmt.str "%s.cmxa" oname) in
-      B0_ocaml.Archive.native_dynlink
+      ignore @@ B0_ocaml.Archive.native_dynlink
         b.m ~conf:b.ocaml_conf ~opts ~has_cstubs ~cmxa ~o:archive;
   end;
   let* ext_cobjs = drop_top_libs b.r ~code ~top ext_cobjs in
