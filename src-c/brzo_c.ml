@@ -124,7 +124,7 @@ let compile_srcs b ~in_dir =
           B0_memo.notify b.m `Warn
             "@[<v>%a:@,File ignored. %a's compilation unit already defined \
              by file:@,%a:@]"
-            Fpath.pp_unquoted c Fmt.(code string) cname Fpath.pp_unquoted f;
+            Fpath.pp_unquoted c Fmt.code cname Fpath.pp_unquoted f;
           loop os cunits hs cs
   in
   let hs = B0_file_exts.(find_files (ext ".h") b.srcs) in
@@ -214,7 +214,7 @@ let find_doxyfile m c dc = match Conf.doxyfile dc with
     | true -> Some doxyfile
     | false ->
         B0_memo.fail m "Doxyfile %a not found."
-          Fmt.(code Fpath.pp_unquoted) doxyfile
+          Fmt.(code' Fpath.pp_unquoted) doxyfile
 
 let vcs_version ~root =
   Log.if_error ~use:"" @@
@@ -243,8 +243,8 @@ let write_doxyfile m c dc ~out_dir ~srcs ~o =
             B0_memo.notify
               m `Warn "@[<v>Tool %a not found.@,Use option %a or invoke %a@,to \
                        disable this warning.@]"
-              Fmt.(code string) "dot" Fmt.(code string) "--use-dot=false"
-              Fmt.(code string) "brzo file set c.use-dot false";
+              Fmt.code "dot" Fmt.code "--use-dot=false"
+              Fmt.code "brzo file set c.use-dot false";
             Fut.return false
       in
       let doxy =

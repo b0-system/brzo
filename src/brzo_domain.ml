@@ -67,7 +67,7 @@ let conf_mode (type c) c (module D : T with type Conf.t = c) =
   Result.bind (B0_pager.page_stdout pager) @@ fun () ->
   Log.app begin fun m ->
     m "@[<v>%a domain@,%a@,%a@,@,%a@]"
-      Fmt.(code string) D.doc_name
+      Fmt.code D.doc_name
       (Fmt.field "outcome" Fmt.id Fmt.string) outcome_name
       D.Conf.pp dc Brzo.Conf.pp_show c
   end;
@@ -132,7 +132,7 @@ let find n ds =
   let has_name id (V (module D)) = String.equal id D.name in
   try Ok (List.find (has_name n) ds) with
   | Not_found ->
-      let hint = Fmt.must_be and pp_domain = Fmt.(code string) in
+      let hint = Fmt.must_be and pp_domain = Fmt.code in
       let unknown = Fmt.(unknown' ~kind:(any "domain") pp_domain ~hint) in
       Fmt.error "@[%a@]" unknown (n, List.map name ds)
 
@@ -145,8 +145,8 @@ let of_conf c ds = match Brzo.Conf.domain_name c with
     | Not_found ->
         Fmt.error
           "No sources found and no domain set in %a file.@,Maybe check %a."
-          Fmt.(code string) Brzo.Conf.brzo_file_name
-          Fmt.(code string) "brzo --conf"
+          Fmt.code Brzo.Conf.brzo_file_name
+          Fmt.code "brzo --conf"
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2018 The brzo programmers

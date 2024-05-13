@@ -38,7 +38,7 @@ let get_brzo_file c k =
   match Brzo.Conf.brzo_file c with
   | Some file -> k file
   | None ->
-      let pp_root = Fmt.(code Fpath.pp_unquoted) in
+      let pp_root = Fmt.code' Fpath.pp_unquoted in
       Fmt.error "No BRZO file found in root %a" pp_root (Brzo.Conf.root c)
 
 let get_sexp_of_file file k =

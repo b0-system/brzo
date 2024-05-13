@@ -96,7 +96,7 @@ let pp_try_install pkgs ppf n =
   | pkgs ->
       let oneof = match pkgs with [_] -> "the" | _ -> "one of the" in
       let pp_install ppf pkg =
-        Fmt.(code string) ppf (String.concat " " ["opam"; "install"; pkg])
+        Fmt.code ppf (String.concat " " ["opam"; "install"; pkg])
       in
       Fmt.pf ppf
         "@[<v>Module %a could not be resolved.@,\

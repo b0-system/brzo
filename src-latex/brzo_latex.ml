@@ -95,7 +95,7 @@ let find_main m c dc ~texs =
   let not_found m =
     B0_memo.fail m
       "@[<v>Could not detect a main tex file.@, Use %a to specify one.@]"
-      Fmt.(code string) "--main"
+      Fmt.code "--main"
   in
   let find_basename name texs =
     let has_basename n p = String.equal n (Fpath.basename p) in
@@ -105,7 +105,7 @@ let find_main m c dc ~texs =
     | t :: _ ->
         B0_memo.notify
           m `Warn "@[<v>Found multiple %a sources using:@,%a@]"
-          Fmt.(code string) name Fpath.pp_quoted t;
+          Fmt.code name Fpath.pp_quoted t;
         Some t
   in
   match Conf.main dc with
@@ -113,7 +113,7 @@ let find_main m c dc ~texs =
       let main = Fpath.(Brzo.Conf.root c // main) in
       if List.mem main texs then Fut.return main else
       B0_memo.fail m "Main file %a not found in %a sources."
-        Fmt.(code Fpath.pp_unquoted) main Fmt.(code string) ".tex"
+        Fmt.(code' Fpath.pp_unquoted) main Fmt.code ".tex"
   | None ->
       match texs with
       | [] -> failwith "TODO if there's bib create a doc with the whole bib"

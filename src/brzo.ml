@@ -19,7 +19,7 @@ module Memo = struct
     match B0_file_exts.find_files B0_file_exts.(ext need_ext) srcs = [] with
     | false -> Fut.return ()
     | true ->
-        let bstr = Fmt.(code string) in
+        let bstr = Fmt.code in
         B0_memo.fail m "@[<v>No %a file found, cannot build an executable.@,\
                          @[Check %a and %a.@]@]"
           bstr need_ext bstr "brzo sources" bstr "brzo --conf"
@@ -140,12 +140,12 @@ module Pre_domain = struct
 end
 
 module Sexp = struct
-  let pp_loc = Fmt.code Sexp.pp_loc
-  let pp_red = Fmt.(tty [`Bold; `Fg `Red])
+  let pp_loc = Fmt.code' Sexp.pp_loc
+  let pp_red = Fmt.tty' [`Bold; `Fg `Red]
   let pp_prefix ppf () = Fmt.pf ppf "%a: " (pp_red Fmt.string) "Error"
   let pp_read_error = Sexp.pp_error ~pp_loc ~pp_prefix ()
   let pp_query_error =
-    let pp_em = Fmt.(code string) in
+    let pp_em = Fmt.code in
     let pp_key = pp_em in
     let pp_path = Sexpq.pp_path ~pp_loc ~pp_key () in
     let pp_error_kind = Sexpq.pp_error_kind ~pp_em ~pp_key () in
@@ -356,7 +356,7 @@ module Conf = struct
         Fmt.field "srcs-x" srcs_x (Fmt.vbox Fpath.(Set.pp pp_quoted));
         Fmt.field "web-browser" web_browser (pp_auto Cmd.pp); ]
 
-  let pp_show ppf c = Fmt.pf ppf "@[<v>%a@,%a@]" Fmt.(code string) "Common" pp c
+  let pp_show ppf c = Fmt.pf ppf "@[<v>%a@,%a@]" Fmt.code "Common" pp c
 end
 
 (* Conf setup handles cli and brzo file setup *)
@@ -367,8 +367,8 @@ module Conf_setup = struct
 
   let err_no_root ~cwd =
     let create = Fmt.str (if Sys.win32 then "type NUL >> %s" else "touch %s") in
-    let bold = Fmt.(code string) in
-    let red = Fmt.(tty [`Bold; `Fg `Red] string) in
+    let bold = Fmt.code in
+    let red = Fmt.tty [`Bold; `Fg `Red] in
     Fmt.error
       "@[<v>%a: @[<v>No %a file found in %a@,\
        or upwards. To %a from this directory use option %a or@,\

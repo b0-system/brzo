@@ -96,7 +96,7 @@ let libs_c =
   let cli =
     let lib =
       let parse s = Result.map_error (fun e -> `Msg e) (parse_lib s) in
-      let pp ppf p = Fmt.(code Fpath.pp_unquoted) ppf p in
+      let pp ppf p = Fmt.(code' Fpath.pp_unquoted) ppf p in
       Arg.conv ~docv:"LIB" (parse, pp)
     in
     let doc =

@@ -135,7 +135,7 @@ let handle_amb_deps r file ~unresolved (`Ambs ambs) = match ambs with
     let pp_alt ppf cmi =
       let dep = Option.get (Mod_resolver.dep_of_file r cmi) in
       let dep = Fpath.to_string dep in
-      Fmt.(code string) ppf
+      Fmt.code ppf
         (String.concat " " ["brzo"; "file"; "set"; "ocaml.deps.v[0]"; dep])
     in
     let pp_amb ppf (dep, cmis) =
@@ -156,10 +156,10 @@ let root_dep dep =
   | None -> dep | Some (root, _) -> Fpath.v root
 
 let pp_miss_deps_help ppf (suggest, opam) =
-  let pp_dep ppf s = Fmt.(code string) ppf s in
+  let pp_dep ppf s = Fmt.code ppf s in
   let pp_opam ppf deps =
     if deps = [] then () else
-    let pp_cmd ppf l = Fmt.(code string) ppf (String.concat " " l) in
+    let pp_cmd ppf l = Fmt.code ppf (String.concat " " l) in
     let pp_dep ppf (root, dep) = match String.equal root dep with
     | true -> Fmt.pf ppf "%a" pp_dep root
     | false -> Fmt.pf ppf "%a (%a)" pp_dep root pp_dep dep
