@@ -68,7 +68,7 @@ let conf_mode (type c) c (module D : T with type Conf.t = c) =
   Log.app begin fun m ->
     m "@[<v>%a domain@,%a@,%a@,@,%a@]"
       Fmt.code D.doc_name
-      (Fmt.field "outcome" Fmt.id Fmt.string) outcome_name
+      (Fmt.field "outcome" Fun.id Fmt.string) outcome_name
       D.Conf.pp dc Brzo.Conf.pp_show c
   end;
   Ok Brzo.Exit.ok

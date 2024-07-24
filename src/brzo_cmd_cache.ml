@@ -10,8 +10,8 @@ let find_used_keys c =
   let* exists = Os.Dir.exists (Brzo.Conf.cache_dir c) in
   if exists then Ok (String.Set.empty) else
   (Result.map_error (Fmt.str "Cannot determine used keys: %s") @@
-   let* l = B0_cli.Memo.Log.read (Brzo.Conf.log_file c) in
-   Ok (B0_cli.File_cache.keys_of_success_ops (B0_cli.Memo.Log.ops l)))
+   let* l = B0_memo_log.read (Brzo.Conf.log_file c) in
+   Ok (B0_cli.File_cache.keys_of_success_ops (B0_memo_log.ops l)))
 
 let get_used_keys c = Result.value ~default:String.Set.empty (find_used_keys c)
 

@@ -12,7 +12,7 @@ let log c format details op_selector =
   let log_file = Brzo.Conf.log_file c in
   let* pager = B0_pager.find ~don't () in
   let* () = B0_pager.page_stdout pager in
-  let* l = B0_cli.Memo.Log.read log_file in
+  let* l = B0_memo_log.read log_file in
   B0_cli.Memo.Log.out Fmt.stdout format details op_selector ~path:log_file l;
   Ok Brzo.Exit.ok
 
@@ -28,14 +28,14 @@ let cmd =
     `S Manpage.s_description;
     `P "The $(tname) command shows build information and operations in \
         various formats.";
-    `S B0_cli.s_output_format_options;
+    `S B0_std_cli.s_output_format_options;
     `S B0_cli.Op.s_selection_options;
     `Blocks B0_cli.Op.query_man;
     Brzo.Cli.man_see_manual; ]
   in
   Cmd.v (Cmd.info "log" ~doc ~exits ~envs ~man)
     Term.(const log $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $
-          B0_cli.Memo.Log.out_format_cli () $ B0_cli.output_format () $
+          B0_cli.Memo.Log.out_format_cli () $ B0_std_cli.output_format () $
           B0_cli.Op.query_cli ())
 
 (*---------------------------------------------------------------------------

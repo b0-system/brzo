@@ -115,7 +115,7 @@ module Doi = struct
 
   let resolve_to_url ?(resolver = default_resolver) httpc doi =
     let request = Http.Request.make ~url:(doi_url ~resolver doi) `GET in
-    let* response = Http_client.fetch ~follow:false httpc request in
+    let* response = Http_client.request ~follow:false httpc request in
     try Ok (List.assoc "location" (Http.Response.headers response)) with
     | Not_found -> Error "No 'location' header found in response"
 
@@ -127,7 +127,7 @@ module Doi = struct
     let headers = ["Accept", format] in
     let url = doi_url ~resolver doi in
     let request = Http.Request.make ~headers ~url `GET in
-    let* response = Http_client.fetch httpc request in
+    let* response = Http_client.request ~follow:true httpc request in
     response_success request response
 end
 
