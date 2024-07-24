@@ -66,7 +66,7 @@ let tool =
 
 let main () =
   Log.time (fun _ m -> m "total time brzo %%VERSION%%") @@ fun () ->
-  B0_cli.Exit.of_eval_result ~term_error:Brzo.Exit.conf_error @@
+  B0_std_cli.Exit.of_eval_result ~term_error:Brzo.Exit.conf_error @@
   Cmd.eval_value tool
 
 let () = if !Sys.interactive then () else Os.Exit.exit (main ())

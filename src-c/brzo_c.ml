@@ -46,7 +46,7 @@ module Conf = struct
       ~absent:None
       ~conf:Sexpq.(some (atomic Brzo.Sexp.fpath))
       ~arg:
-        Cmdliner.Arg.(opt (some ~none:"generated" (some B0_cli.fpath)) None)
+        Cmdliner.Arg.(opt (some ~none:"generated" (some B0_std_cli.fpath)) None)
 
   let use_dot_key = "use-dot"
   let use_dot_c =

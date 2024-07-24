@@ -285,7 +285,7 @@ module Conf : sig
     hash_fun:(module Hash.T) -> jobs:int -> log_file:Fpath.t ->
     log_level:Log.level -> no_pager:bool -> outcome_mode:outcome_mode ->
     output_outcome_path:bool -> pdf_viewer:Cmd.t option -> root:Fpath.t ->
-    srcs_i:Fpath.Set.t -> srcs_x:Fpath.Set.t -> tty_cap:Tty.cap ->
+    srcs_i:Fpath.Set.t -> srcs_x:Fpath.Set.t -> fmt_styler:Fmt.styler ->
     web_browser:Cmd.t option -> unit -> t
   (** [v] constructs a configuration with given attributes. See the
       accessors for semantics. *)
@@ -363,8 +363,8 @@ module Conf : sig
   (** [srcs c] are the absolute source files path in configuration [c]
       sorted by file extension. *)
 
-  val tty_cap : t -> Tty.cap
-  (** [tty_cap c] is the terminal capability to assume for output. *)
+  val fmt_styler : t -> Fmt.styler
+  (** [fmt_sytler c] is the formatting styler. *)
 
   val web_browser : t -> Cmd.t option
   (** [web_browser] is the WWW browser command to use. *)

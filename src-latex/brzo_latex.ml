@@ -32,7 +32,7 @@ module Conf = struct
       ~doc:"Use $(docv) to curl" ~docv:"CMD" ~docs
       ~absent:(Cmd.arg "curl")
       ~conf:Sexpq.(map Cmd.list (list atom))
-      ~arg:Cmdliner.Arg.(opt (some ~none:"curl" B0_cli.cmd) None)
+      ~arg:Cmdliner.Arg.(opt (some ~none:"curl" B0_std_cli.cmd) None)
 
   let doi_resolver_key = "doi-resolver"
   let doi_resolver_c =
@@ -51,7 +51,7 @@ module Conf = struct
       ~absent:None
       ~conf:Sexpq.(some (atomic Brzo.Sexp.fpath))
       ~arg:Cmdliner.Arg.(opt (some ~none:"guessed"
-                                (some B0_cli.fpath)) None)
+                                (some B0_std_cli.fpath)) None)
 
   let get_conf curl doi_resolver main sexp =
     Result.bind (Brzo.Conf.Bit.get curl_c curl sexp) @@ fun curl ->
@@ -75,7 +75,7 @@ let fingerprint = B0_file_exts.latex_lang
 
 let bibdoi_to_bib m c dc bibdoi =
   let bib = Fpath.(bibdoi -+ ".bib") in
-  let httpr = B0_http.Http_client.get ~cmd:dc.Conf.curl () in
+  let http = B0_http.Http_client.make ~cmd:dc.Conf.curl () in
   begin
     B0_memo.ready_file m bibdoi;
     ignore @@
@@ -83,7 +83,7 @@ let bibdoi_to_bib m c dc bibdoi =
     begin
       B0_memo.write m ~stamp:"%%VERSION%%" ~reads:[bibdoi] bib @@ fun () ->
       Result.bind (Bibdoi.of_string ~file:bibdoi contents) @@ fun b ->
-      Result.bind httpr @@ fun r ->
+      Result.bind http @@ fun r ->
       (* We should memoize each curl invocation *)
       Bibdoi.to_bibtex ~resolver:(Conf.doi_resolver dc) r b
     end;

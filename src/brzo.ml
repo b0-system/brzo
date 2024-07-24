@@ -28,7 +28,7 @@ module Memo = struct
     let write_build_log m = match log_file with
     | None -> ()
     | Some log_file ->
-        Log.if_error ~use:() (B0_cli.Memo.Log.(write log_file (of_memo m)))
+        Log.if_error ~use:() (B0_memo_log.(write log_file (of_memo m)))
     in
     let hook () = write_build_log m in
     Os.Exit.on_sigint ~hook @@ fun () ->
@@ -141,7 +141,7 @@ end
 
 module Sexp = struct
   let pp_loc = Fmt.code' Sexp.pp_loc
-  let pp_red = Fmt.tty' [`Bold; `Fg `Red]
+  let pp_red = Fmt.st' [`Bold; `Fg `Red]
   let pp_prefix ppf () = Fmt.pf ppf "%a: " (pp_red Fmt.string) "Error"
   let pp_read_error = Sexp.pp_error ~pp_loc ~pp_prefix ()
   let pp_query_error =
@@ -283,14 +283,14 @@ module Conf = struct
       srcs : (B0_file_exts.map, string) result Lazy.t;
       srcs_i : Fpath.Set.t;
       srcs_x : Fpath.Set.t;
-      tty_cap : Tty.cap;
+      fmt_styler : Fmt.styler;
       web_browser : Cmd.t option; }
 
   let v
       ~action_args ~background ~b0_dir ~brzo_file ~cache_dir ~cwd ~domain_name
       ~domain_confs ~hash_fun ~jobs ~log_file ~log_level ~no_pager
       ~outcome_mode ~output_outcome_path ~pdf_viewer ~root ~srcs_i ~srcs_x
-      ~tty_cap ~web_browser ()
+      ~fmt_styler ~web_browser ()
     =
     let trash_dir = Fpath.(b0_dir / B0_cli.Memo.trash_dir_name) in
     let srcs = lazy (collect_srcs ~srcs_i ~srcs_x) in
@@ -298,7 +298,7 @@ module Conf = struct
     { action_args; background; b0_dir; brzo_file; cache_dir; cwd; domain_name;
       domain_confs; hash_fun; jobs; log_file; log_level; memo; no_pager;
       outcome_mode; output_outcome_path; pdf_viewer; root; srcs_i; srcs_x;
-      srcs; tty_cap; web_browser; }
+      srcs; fmt_styler; web_browser; }
 
   let action_args c = c.action_args
   let background c = c.background
@@ -330,7 +330,7 @@ module Conf = struct
   let srcs c = Lazy.force c.srcs
   let srcs_i c = c.srcs_i
   let srcs_x c = c.srcs_x
-  let tty_cap c = c.tty_cap
+  let fmt_styler c = c.fmt_styler
   let web_browser c = c.web_browser
 
   let auto = Fmt.any "<auto>"
@@ -368,7 +368,7 @@ module Conf_setup = struct
   let err_no_root ~cwd =
     let create = Fmt.str (if Sys.win32 then "type NUL >> %s" else "touch %s") in
     let bold = Fmt.code in
-    let red = Fmt.tty [`Bold; `Fg `Red] in
+    let red = Fmt.st [`Bold; `Fg `Red] in
     Fmt.error
       "@[<v>%a: @[<v>No %a file found in %a@,\
        or upwards. To %a from this directory use option %a or@,\
@@ -542,12 +542,12 @@ module Conf_setup = struct
       ~auto_cwd_root ~use_brzo_file ~action_args ~background ~b0_dir
       ~brzo_file ~cache_dir ~cwd ~hash_fun ~jobs ~log_file ~log_level ~no_pager
       ~outcome_name ~outcome_mode ~output_outcome_path
-      ~pdf_viewer ~root ~srcs_i ~srcs_x ~tty_cap ~web_browser ~all_domains
+      ~pdf_viewer ~root ~srcs_i ~srcs_x ~color ~web_browser ~all_domains
       ~domain ()
     =
-    let tty_cap = B0_cli.B0_std.get_tty_cap tty_cap in
-    let log_level = B0_cli.B0_std.get_log_level log_level in
-    B0_cli.B0_std.setup tty_cap log_level ~log_spawns:Log.Debug;
+    let fmt_styler = B0_std_cli.get_styler color in
+    let log_level = B0_std_cli.get_log_level log_level in
+    B0_std_cli.setup fmt_styler log_level ~log_spawns:Log.Debug;
     let set_cwd = match cwd with None -> Ok () | Some c -> Os.Dir.set_cwd c in
     Result.bind set_cwd @@ fun () ->
     Result.bind (Os.Dir.cwd ()) @@ fun cwd ->
@@ -570,7 +570,7 @@ module Conf_setup = struct
     Ok (Conf.v ~action_args ~background ~b0_dir ~brzo_file ~cache_dir ~cwd
           ~domain_name ~domain_confs ~hash_fun ~jobs ~log_file ~log_level
           ~no_pager ~outcome_mode ~output_outcome_path ~pdf_viewer ~root
-          ~srcs_i ~srcs_x ~tty_cap ~web_browser ())
+          ~srcs_i ~srcs_x ~fmt_styler ~web_browser ())
 end
 
 module Cli = struct
@@ -588,7 +588,7 @@ module Cli = struct
 
   (* General configuration cli arguments *)
 
-  let fpath = B0_cli.fpath
+  let fpath = B0_std_cli.fpath
   let docs = Manpage.s_common_options
 
   let action_args =
@@ -670,7 +670,7 @@ module Cli = struct
     B0_cli.Memo.log_file ~docs ~doc_none ~env ()
 
   let log_level =
-    B0_cli.B0_std.log_level ~docs ~env:(Cmd.Env.info "BRZO_VERBOSITY") ()
+    B0_std_cli.log_level ~docs ~env:(Cmd.Env.info "BRZO_VERBOSITY") ()
 
   let no_pager = B0_pager.don't ~docs ()
   let pdf_viewer = B0_pdf_viewer.pdf_viewer ~docs ()
@@ -697,8 +697,8 @@ module Cli = struct
     let docv = "PATH" in
     Arg.(value & opt_all fpath [] & info ["x"; "srcs-x"] ~doc ~docv ~docs)
 
-  let tty_cap =
-    B0_cli.B0_std.tty_cap ~docs ~env:(Cmd.Env.info "BRZO_COLOR") ()
+  let color =
+    B0_std_cli.color ~docs ~env:(Cmd.Env.info "BRZO_COLOR") ()
 
   (* Domain specific cli *)
 
@@ -732,7 +732,7 @@ module Cli = struct
     let c
         action_args b0_dir background brzo_file cache_dir cwd hash_fun jobs
         log_file log_level no_pager outcome_name outcome_mode
-        output_outcome_path pdf_viewer root srcs_i srcs_x tty_cap web_browser
+        output_outcome_path pdf_viewer root srcs_i srcs_x color web_browser
         domain
       =
       Result.map_error (fun s -> `Msg s) @@
@@ -740,7 +740,7 @@ module Cli = struct
         ~auto_cwd_root ~use_brzo_file ~action_args ~background ~b0_dir
         ~brzo_file ~cache_dir ~cwd ~hash_fun ~jobs ~log_file ~log_level
         ~no_pager ~outcome_name ~outcome_mode ~output_outcome_path ~pdf_viewer
-        ~root ~srcs_i ~srcs_x ~tty_cap ~web_browser ~all_domains ~domain ()
+        ~root ~srcs_i ~srcs_x ~color ~web_browser ~all_domains ~domain ()
     in
     let outcome_name = outcome_name domain in
     let outcome_mode = outcome_mode domain in
@@ -751,7 +751,7 @@ module Cli = struct
     Term.(const c $ action_args $ b0_dir $ background $ brzo_file $ cache_dir $
           cwd $ hash_fun $ jobs $ log_file $ log_level $ no_pager $
           outcome_name $ outcome_mode $ output_outcome_path $
-          pdf_viewer $ root $ srcs_i $ srcs_x $ tty_cap $ web_browser $
+          pdf_viewer $ root $ srcs_i $ srcs_x $ color $ web_browser $
           domain_cli_conf)
 end
 
