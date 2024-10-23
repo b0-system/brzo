@@ -134,9 +134,9 @@ body { background: #181B20; color: #8C8D90; }
     | false -> El.void
     in
     let page =
-      El.basic_page ~generator ~lang ~scripts ~styles ~title ~more_head body
+      El.page ~generator ~lang ~scripts ~styles ~title ~more_head body
     in
-    Ok (El.to_string ~doc_type:true page)
+    Ok (El.to_string ~doctype:true page)
 
   let toplevel_ui_src =
 {ocaml|

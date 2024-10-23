@@ -11,7 +11,7 @@ open Brzo_b0_latex
 module Conf = struct
   type t =
     { curl : Cmd.t;
-      doi_resolver : Url.t;
+      doi_resolver : B0_url.t;
       main : Fpath.t option; }
 
   let curl c = c.curl

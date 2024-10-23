@@ -98,7 +98,7 @@ let get c spath =
 let path c =
   Log.if_error ~use:Brzo.Exit.some_error @@
   get_brzo_file c @@ fun file ->
-  Log.app (fun m -> m "%a" Fpath.pp_unquoted file);
+  Log.stdout (fun m -> m "%a" Fpath.pp_unquoted file);
   Ok Brzo.Exit.ok
 
 let set c caret sexps dry_run =

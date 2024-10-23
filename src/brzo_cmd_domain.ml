@@ -9,7 +9,7 @@ open Result.Syntax
 let domain c =
   Log.if_error ~use:Brzo.Exit.undefined_domain @@
   let* d = Brzo_domain.of_conf c Brzo_domain_list.v in
-  Log.app (fun m -> m "@[%s@]" (Brzo_domain.name d));
+  Log.stdout (fun m -> m "@[%s@]" (Brzo_domain.name d));
   Ok Brzo.Exit.ok
 
 (* Command line interface *)
