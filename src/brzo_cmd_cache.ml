@@ -37,7 +37,7 @@ let keys c =
 let path c =
   Log.if_error ~use:Brzo.Exit.some_error @@
   let dir = Brzo.Conf.cache_dir c in
-  Log.app (fun m -> m "%a" Fpath.pp_unquoted dir);
+  Log.stdout (fun m -> m "%a" Fpath.pp_unquoted dir);
   Ok Brzo.Exit.ok
 
 let stats c =

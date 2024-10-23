@@ -34,7 +34,7 @@ let sources c doms =
   match List.sort Fpath.compare srcs with
   | [] -> Ok Brzo.Exit.ok
   | srcs ->
-      Log.app (fun m -> m "@[<v>%a@]" (Fmt.list Fpath.pp_unquoted) srcs);
+      Log.stdout (fun m -> m "@[<v>%a@]" (Fmt.list Fpath.pp_unquoted) srcs);
       Ok Brzo.Exit.ok
 
 (* Command line interface *)
