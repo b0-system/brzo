@@ -138,9 +138,9 @@ module Bibdoi = struct
   let sexp b = b.sexp
   let dois b = b.dois
 
-  let parse_doi a = match Url.scheme a with
+  let parse_doi a = match B0_url.scheme a with
   | Some ("http" | "https") ->
-      begin match Url.path_and_query a with
+      begin match B0_url.path a with
       | None -> Fmt.error "%s: could not parse DOI" a
       | Some doi -> Ok doi
       end

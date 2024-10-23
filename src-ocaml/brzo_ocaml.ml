@@ -705,7 +705,7 @@ let index_mld_for_pkg b pkg_name mld_odocs odocs doc_htmls =
         let doc_html_link md_html =
           let url = Fpath.relative ~to_dir:(Fpath.parent index) md_html in
           let url = Fpath.to_url_path url in
-          let text = B0_html.El.title_of_fpath md_html in
+          let text = B0_html.El.title_of_filepath (Fpath.to_string md_html) in
           Fmt.str "{- {{:%s}%s}}" url (String.Ascii.capitalize text)
         in
         let mlds = List.rev_map mld_link mlds in

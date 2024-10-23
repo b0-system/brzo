@@ -61,7 +61,7 @@ end
 (** DOIs and their resolution. *)
 module Doi : sig
 
-  val default_resolver : Url.t
+  val default_resolver : B0_url.t
   (** [default_resolver] is the default resolver used to
       resolve DOIs. This is [https://doi.org]. *)
 
@@ -84,7 +84,7 @@ module Doi : sig
       to an URI with [resolver] (defaults to {!default_resolver}). *)
 
   val resolve_to_bib :
-    ?format:string -> ?resolver:Url.t ->
+    ?format:string -> ?resolver:B0_url.t ->
     B0_http.Http_client.t -> t -> (string, string) result
   (** [resolve_to_bib r ~resolver doi] resolves [doi] to a bibliographic entry
       with [resolver] (defaults to {!default_resolver}). *)

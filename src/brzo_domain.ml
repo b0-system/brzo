@@ -65,7 +65,7 @@ let conf_mode (type c) c (module D : T with type Conf.t = c) =
   let outcome_name, dc = Option.get (Brzo.Conf.domain_conf c (module D)) in
   Result.bind (B0_pager.find ~don't:(Brzo.Conf.no_pager c) ()) @@ fun pager ->
   Result.bind (B0_pager.page_stdout pager) @@ fun () ->
-  Log.app begin fun m ->
+  Log.stdout begin fun m ->
     m "@[<v>%a domain@,%a@,%a@,@,%a@]"
       Fmt.code D.doc_name
       (Fmt.field "outcome" Fun.id Fmt.string) outcome_name
@@ -77,7 +77,7 @@ let path_mode c domain m () =
   let o, dc = get_outcome_and_conf c domain in
   let* build_dir = build_dir domain o m c dc in
   let* artefact = (Brzo_outcome.artefact o) m c dc ~build_dir in
-  Log.app (fun m -> m "%a" Fpath.pp_unquoted artefact);
+  Log.stdout (fun m -> m "%a" Fpath.pp_unquoted artefact);
   Fut.return (`Exit Brzo.Exit.ok)
 
 let delete_mode c domain m () =
@@ -92,7 +92,7 @@ let build_mode c domain m () =
   let* artefact = (Brzo_outcome.artefact o) m c dc ~build_dir in
   let* () = run_outcome_build o m c dc ~build_dir ~artefact in
   if Brzo.Conf.output_outcome_path c
-  then Log.app (fun m -> m "%a" Fpath.pp_unquoted artefact);
+  then Log.stdout (fun m -> m "%a" Fpath.pp_unquoted artefact);
   Fut.return (`Exit Brzo.Exit.ok)
 
 let normal_mode c domain m () =

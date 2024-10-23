@@ -45,8 +45,8 @@ module Js_of_ocaml = struct
   | s ->
       let add_byte buf byte =
         Buffer.add_string buf "0x";
-        Buffer.add_char buf (Char.Ascii.lower_hex_digit (byte lsr 4));
-        Buffer.add_char buf (Char.Ascii.lower_hex_digit byte)
+        Buffer.add_char buf (Char.Ascii.lower_hex_digit_of_int (byte lsr 4));
+        Buffer.add_char buf (Char.Ascii.lower_hex_digit_of_int (byte      ));
       in
       Buffer.reset buf;
       Buffer.add_char buf '[';
@@ -134,9 +134,9 @@ body { background: #181B20; color: #8C8D90; }
     | false -> El.void
     in
     let page =
-      El.basic_page ~generator ~lang ~scripts ~styles ~title ~more_head body
+      El.page ~generator ~lang ~scripts ~styles ~title ~more_head body
     in
-    Ok (El.to_string ~doc_type:true page)
+    Ok (El.to_string ~doctype:true page)
 
   let toplevel_ui_src =
 {ocaml|

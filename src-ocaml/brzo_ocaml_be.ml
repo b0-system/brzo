@@ -188,10 +188,11 @@ let get_miss_deps_help r opam_pkgs miss_deps =
     match root_in_opam && not root_in_resolver with
     | true -> `Opam (root, dep)
     | false ->
-        match String.suggest all_deps dep with
+        let dict yield = List.iter yield all_deps in
+        match String.spellcheck dict dep with
         | [] ->
             if not root_in_resolver
-            then `Suggest (dep, String.suggest all_deps root) else
+            then `Suggest (dep, String.spellcheck dict root) else
             let starts_with f = String.starts_with ~prefix:root f in
             `Suggest (dep, List.filter starts_with all_deps)
         | suggest -> `Suggest (dep, suggest)
@@ -249,18 +250,21 @@ let suggest_pkgs_for_modname m ~pkgs =
     in
     loop m pkgs
   in
-  let find_fuzzy m pkgs =
-    let rec loop ~dist m pkgs = match String.suggest ~dist pkgs m with
-    | [] ->
-        begin match String.cut_right ~sep:"_" m with
-        | Some (m, _) when m <> "" ->
-            if List.mem m installed_pkgs then `None else
-            loop ~dist:1 (* be less forgiving for prefixes *) m pkgs
-        | _ -> `None
-        end
-    | pkgs -> `Fuzzy_prefix_match (return pkgs)
+  let find_fuzzy m pkgs = (* XXX shouldn't we simply adapt to size ? *)
+    let rec loop ~max_dist m pkgs =
+      match String.spellcheck ~max_dist (fun yield -> List.iter yield pkgs) m
+      with
+      | [] ->
+          begin match String.cut_right ~sep:"_" m with
+          | Some (m, _) when m <> "" ->
+              if List.mem m installed_pkgs then `None else
+              let max_dist = Fun.const 1 (* be less forgiving for prefixes *) in
+              loop ~max_dist m pkgs
+          | _ -> `None
+          end
+      | pkgs -> `Fuzzy_prefix_match (return pkgs)
     in
-    loop ~dist:2 m pkgs
+    loop ~max_dist:(Fun.const 2) m pkgs
   in
   let m = normalize_id m in
   match find_exact m uninstalled_pkgs with
