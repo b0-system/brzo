@@ -81,7 +81,7 @@ module Js_of_ocaml = struct
     let env =
       let env_var k v = Fmt.str "\"%s\": \"%s\"" (js_escape k) (js_escape v) in
       let add_var k v acc = env_var k v :: acc in
-      let env = List.rev (String.Map.fold add_var env []) in
+      let env = List.rev (Os.Env.fold add_var env []) in
       env_var "BRZO_HTML" "true" :: env
     in
     let args =
