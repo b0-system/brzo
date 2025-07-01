@@ -152,7 +152,7 @@ let handle_amb_deps r file ~unresolved (`Ambs ambs) = match ambs with
 (* Handling missing user specified dependencies. *)
 
 let root_dep dep =
-  match String.cut_left ~sep:Fpath.dir_sep (Fpath.to_string dep) with
+  match String.cut ~sep:Fpath.natural_dir_sep (Fpath.to_string dep) with
   | None -> dep | Some (root, _) -> Fpath.v root
 
 let pp_miss_deps_help ppf (suggest, opam) =
@@ -244,7 +244,7 @@ let suggest_pkgs_for_modname m ~pkgs =
     let rec loop m pkgs = match List.mem m pkgs with
     | true -> `Prefix_match (get_real_name m)
     | false ->
-        match String.cut_right ~sep:"_" m with
+        match String.rcut ~sep:"_" m with
         | Some (m, _) when m <> "" -> loop m pkgs
         | _ -> `None
     in
@@ -255,7 +255,7 @@ let suggest_pkgs_for_modname m ~pkgs =
       match String.spellcheck ~max_dist (fun yield -> List.iter yield pkgs) m
       with
       | [] ->
-          begin match String.cut_right ~sep:"_" m with
+          begin match String.rcut ~sep:"_" m with
           | Some (m, _) when m <> "" ->
               if List.mem m installed_pkgs then `None else
               let max_dist = Fun.const 1 (* be less forgiving for prefixes *) in

@@ -88,8 +88,8 @@ let ocamlpath_c =
 let libs_key = "libs"
 let libs_c =
   let parse_lib s =
-    Result.bind (Fpath.of_string s) @@ fun p -> match Fpath.is_rel p with
-    | true -> Ok (Fpath.strip_dir_sep p)
+    Result.bind (Fpath.of_string s) @@ fun p -> match Fpath.is_relative p with
+    | true -> Ok (Fpath.strip_trailing_dir_sep p)
     | false -> Fmt.error "%a: not a library name" Fpath.pp_unquoted p
   in
   let conf = Sexpq.(list (atom_to ~kind:"lib" parse_lib)) in

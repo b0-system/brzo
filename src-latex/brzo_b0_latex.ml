@@ -39,13 +39,13 @@ module Fls = struct
       | Ok p -> p
       | Error e -> Fmt.failwith_line i " Cannot parse path: %s" e
     in
-    let parse_line i l = match String.cut_left ~sep:" " l with
+    let parse_line i l = match String.cut ~sep:" " l with
     | None -> Fmt.failwith_line i " Cannot parse line: %S" l
     | Some ("INPUT", p) -> `Input (parse_path i p)
     | Some ("OUTPUT", p) -> `Output (parse_path i p)
     | Some ("PWD", p) ->
         let p = parse_path i p in
-        if Fpath.is_abs p then `Cwd p else
+        if Fpath.is_absolute p then `Cwd p else
         Fmt.failwith_line i " PWD directive: %a not absolute" Fpath.pp_quoted p
     | Some (dir, _) -> Fmt.failwith_line i " Unknown directive: %S" dir
     in

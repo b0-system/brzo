@@ -229,7 +229,7 @@ module Conf = struct
       Fpath.Set.mem file srcs_x
     in
     let add_file fname p (seen, by_ext as acc) =
-      let ext = Fpath.get_ext p in
+      let ext = Fpath.get_ext ~multi:false p in
       if not (String.Set.mem ext B0_file_exts.all) then acc else
       seen, (String.Map.add_to_list ext p by_ext)
     in
@@ -244,7 +244,7 @@ module Conf = struct
       | true -> add_file (Fpath.basename i) i acc
       | false ->
           if exclude (Fpath.basename i) i then acc else
-          let i = Fpath.strip_dir_sep i in
+          let i = Fpath.strip_trailing_dir_sep i in
           if Fpath.Set.mem i seen then acc else
           let acc = Fpath.Set.add i seen, by_ext in
           if not (Os.Dir.exists i |> Result.error_to_failure) then acc else
@@ -270,7 +270,7 @@ module Conf = struct
       cwd : Fpath.t;
       domain_name : string option;
       domain_confs : domain list;
-      hash_fun : (module Hash.T);
+      hash_fun : (module B0_hash.T);
       jobs : int;
       log_file : Fpath.t;
       log_level : Log.level;
@@ -335,7 +335,7 @@ module Conf = struct
 
   let auto = Fmt.any "<auto>"
   let pp_auto pp = Fmt.option ~none:auto pp
-  let pp_hash_fun ppf (module H : Hash.T) = Fmt.string ppf H.id
+  let pp_hash_fun ppf (module H : B0_hash.T) = Fmt.string ppf H.id
   let pp =
     Fmt.record
       [ Fmt.field "b0-dir" b0_dir Fpath.pp_quoted;
@@ -401,7 +401,7 @@ module Conf_setup = struct
         | Some f -> Some Fpath.(cwd // f)
         | None -> root_brzo_file
         in
-        Ok (Fpath.add_dir_sep root, brzo_file)
+        Ok (Fpath.ensure_trailing_dir_sep root, brzo_file)
 
   (* BRZO file *)
 

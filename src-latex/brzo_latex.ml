@@ -123,7 +123,7 @@ let find_main m c dc ~texs =
           | Some t -> Fut.return t
           | None ->
               let root_name =
-                Fpath.basename ~strip_ext:true (Brzo.Conf.root c)
+                Fpath.basename ~strip_exts:true (Brzo.Conf.root c)
               in
               match find_basename (Fmt.str "%s.tex" root_name) texs with
               | Some t -> Fut.return t
@@ -160,7 +160,7 @@ let exec_build m c dc ~build_dir ~artefact ~srcs =
     Cmd.(arg "-file-line-error" % "-halt-on-error" %
          "-interaction=nonstopmode" %
          "-output-directory" %% path build_dir %
-         "-jobname" % Fpath.basename ~strip_ext:true artefact %%
+         "-jobname" % Fpath.basename ~strip_exts:true artefact %%
          path main)
   in
   let reads =
@@ -313,7 +313,7 @@ let supported_srcs =
   List.fold_left add_exts String.Set.empty langs
 
 let latex_lang_setup src =
-  let ext = Fpath.get_ext src in
+  let ext = Fpath.get_ext ~multi:false src in
   let is_lang (exts, _) = String.Set.mem ext exts in
   match List.find is_lang langs with
   | exception Not_found -> ""
@@ -345,7 +345,8 @@ let listings_artefact m c _ ~build_dir =
   Fut.return Fpath.(build_dir / Fmt.str "%s-listing.pdf" name)
 
 let sort_src_paths p0 p1 =
-  let p0, ext0 = Fpath.cut_ext p0 and p1, ext1 = Fpath.cut_ext p1 in
+  let p0, ext0 = Fpath.cut_ext ~multi:false p0 in
+  let p1, ext1 = Fpath.cut_ext ~multi:false p1 in
   let c = Fpath.compare p0 p1 in
   if c <> 0 then c else
   match ext0, ext1 with

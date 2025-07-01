@@ -13,7 +13,7 @@ module Mod_resolver = struct
   let restrictions m index dep_dirs deps =
     let rec add_dep added acc miss dep = function
     | dir :: dirs ->
-        let d = Fpath.(add_dir_sep @@ dir // dep) in
+        let d = Fpath.(ensure_trailing_dir_sep @@ dir // dep) in
         if Fpath.Set.mem d (B0_findex.dirs index)
         then add_dep true (d :: acc) miss dep dirs
         else add_dep added acc miss dep dirs
@@ -59,7 +59,8 @@ module Mod_resolver = struct
   let index r = r.index
   let dep_of_file r f =
     let dir_dep f dir = match Fpath.strip_prefix dir f with
-    | None -> None | Some rel -> Some (Fpath.strip_dir_sep @@ Fpath.parent rel)
+    | None -> None
+    | Some rel -> Some (Fpath.strip_trailing_dir_sep @@ Fpath.parent rel)
     in
     List.find_map (dir_dep f) (dep_dirs r)
 
@@ -68,7 +69,7 @@ module Mod_resolver = struct
       let parent = Fpath.parent root_dir in
       let rem_parent f = Option.get (Fpath.strip_prefix parent f) in
       let rec loop acc = function
-      | [] -> List.rev_map Fpath.strip_dir_sep acc
+      | [] -> List.rev_map Fpath.strip_trailing_dir_sep acc
       | d :: ds ->
           let subs = B0_findex.dir_dirs r.index d in
           let deps = List.rev_map rem_parent subs in
@@ -158,13 +159,16 @@ module Mod_resolver = struct
         let cobjs = List.filter (Fpath.has_ext ext) files in
         let o =
           let base = Fpath.basename dir in
-          let uniq = Hash.to_hex (B0_memo.hash_string r.m (Fpath.to_string dir)) in
+          let uniq =
+            B0_hash.to_hex (B0_memo.hash_string r.m (Fpath.to_string dir))
+          in
           Fpath.(r.memo_dir / Fmt.str "%s-%s%s.info" base uniq ext)
         in
         B0_memo.ready_files r.m cobjs;
         if ext = ".cmxa" then begin
           List.iter
-            (fun o -> B0_memo.ready_file r.m (Fpath.set_ext ".a" o)) cobjs
+            (fun o ->
+               B0_memo.ready_file r.m (Fpath.set_ext ~multi:false ".a" o)) cobjs
         end;
         B0_ocaml.Cobj.write r.m ~cobjs ~o;
         let* cobjs = B0_ocaml.Cobj.read r.m o in
