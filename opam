@@ -1,22 +1,55 @@
 opam-version: "2.0"
+name: "brzo"
+synopsis: "Quick-setting builds"
+description: """\
+Brzo is a build tool to quickly turn source files of various languages
+into executable programs and documents.
+
+Brzo favors best-effort heuristics and advices over formal
+configuration. It is a simple build tool made for exploratory design
+and learning. It is unsuitable for building software distributions.
+
+Brzo partitions its build logics into *domains* which broadly map to
+support for different languages. Each domain provides a few build
+*outcomes* which determine a build artefact and an action performed on
+it. The following domains are defined:
+
+* `c`, C support. Outcomes for executable programs and source
+  documentation via [Doxygen][doxygen]. 
+* `cmark`, [CommonMark][commonmark] support. Outcomes for a web of
+  HTML programs (via [cmark][cmark]).
+* `latex`, [LaTeX][latex] support. Outcomes for PDF documents and
+  source file listings.
+* `ocaml`, [OCaml][ocaml] support. Outcomes for byte and native code
+  executable programs with C bindings, HTML and JavaScript programs
+  via [js_of_ocaml][jsoo], interactive toplevel sessions in the
+  terminal and in the browser, source documentation and manuals.
+
+Brzo is distributed under the ISC license, it depends on [`b0`][b0] and
+[`cmdliner`][cmdliner]."""
 maintainer: "Daniel Bünzli <daniel.buenzl i@erratique.ch>"
-authors: ["The brzo programmers"]
+authors: "The brzo programmers"
+license: "ISC"
+tags: ["build" "dev" "org:erratique" "org:b0-system"]
 homepage: "https://erratique.ch/software/brzo"
 doc: "https://erratique.ch/software/brzo/doc"
-license: "ISC"
-dev-repo: "git+https://erratique.ch/repos/brzo.git"
 bug-reports: "https://github.com/b0-system/brzo/issues"
-tags: [ "org:erratique" "org:b0-system" "build" "dev" ]
-depends:
-[
-  "ocaml" {>= "4.03.0"}
+depends: [
+  "ocaml" {>= "4.14.0"}
   "ocamlfind" {build}
   "ocamlbuild" {build}
-  "topkg" {build & >= "0.9.0"}
   "b0"
-  "cmdliner" {>= "1.0.2"}
+  "topkg" {build & >= "1.0.3"}
+  "cmdliner" {>= "1.3.0"}
 ]
-build:
-[[
-  "ocaml" "pkg/pkg.ml" "build" "--dev-pkg" "%{dev}%"
-]]
+build: ["ocaml" "pkg/pkg.ml" "build" "--dev-pkg" "%{dev}%"]
+install: [
+  "cmdliner"
+  "install"
+  "tool-support"
+  "_build/src/brzo_main.native:brzo" {ocaml:native}
+  "_build/src/brzo_main.byte:brzo" {!ocaml:native}
+  "%{prefix}%"
+]
+dev-repo: "git+https://erratique.ch/repos/brzo.git"
+x-maintenance-intent: ["(latest)"]

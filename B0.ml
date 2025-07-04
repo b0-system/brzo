@@ -46,16 +46,29 @@ let brzo_tool =
 let default =
   let meta =
     B0_meta.empty
-    |> B0_meta.(add authors) ["The brzo programmers"]
-    |> B0_meta.(add maintainers)
-       ["Daniel Bünzli <daniel.buenzl i@erratique.ch>"]
-    |> B0_meta.(add homepage) "https://erratique.ch/software/brzo"
-    |> B0_meta.(add online_doc) "https://erratique.ch/software/brzo/doc"
-    |> B0_meta.(add description_tags)
-       ["build"; "dev"; "org:erratique"; "org:b0-system"]
-    |> B0_meta.(add licenses) ["ISC"]
-    |> B0_meta.(add repo) "git+https://erratique.ch/repos/brzo.git"
-    |> B0_meta.(add issues) "https://github.com/b0-system/brzo/issues"
+    |> ~~ B0_meta.authors ["The brzo programmers"]
+    |> ~~ B0_meta.maintainers ["Daniel Bünzli <daniel.buenzl i@erratique.ch>"]
+    |> ~~ B0_meta.homepage "https://erratique.ch/software/brzo"
+    |> ~~ B0_meta.online_doc "https://erratique.ch/software/brzo/doc"
+    |> ~~ B0_meta.licenses ["ISC"]
+    |> ~~ B0_meta.repo "git+https://erratique.ch/repos/brzo.git"
+    |> ~~ B0_meta.issues "https://github.com/b0-system/brzo/issues"
+    |> ~~ B0_meta.description_tags
+      ["build"; "dev"; "org:erratique"; "org:b0-system"]
+    |> ~~ B0_opam.build
+      {|[["ocaml" "pkg/pkg.ml" "build" "--dev-pkg" "%{dev}%"]]|}
+    |> ~~ B0_opam.install
+      {|[[ "cmdliner" "install" "tool-support"
+           "_build/src/brzo_main.native:brzo" {ocaml:native}
+           "_build/src/brzo_main.byte:brzo" {!ocaml:native}
+           "%{prefix}%"]]|}
+    |> ~~ B0_opam.depends [
+      "ocaml", {|>= "4.14.0"|};
+      "ocamlfind", {|build|};
+      "ocamlbuild", {|build|};
+      "b0", {||};
+      "topkg", {|build & >= "1.0.3"|};
+      "cmdliner", {|>= "1.3.0"|}; ]
     |> B0_meta.tag B0_opam.tag
   in
   B0_pack.make "default" ~doc:"The brzo project" ~meta ~locked:true @@
