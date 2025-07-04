@@ -25,7 +25,7 @@ let brzo_tool =
     | _ -> "brzo_read_cmi_geq_408"
     in
     let scope_dir = B0_build.scope_dir b in
-    let file = Fpath.(scope_dir / "src-ocaml" / dir / "brzo_read_cmi.ml") in
+    let file = Fpath.(scope_dir / "src"/ "ocaml" / dir / "brzo_read_cmi.ml") in
     B0_memo.ready_file (B0_build.memo b) file;
     Fut.return (Fpath.Set.singleton file)
   in
@@ -33,11 +33,11 @@ let brzo_tool =
     [cmdliner; unix; b0_std; b0_memo; b0_file; b0_kit; compiler_libs_common]
   in
   let srcs =
-    [`Dir ~/"src"; `Dir ~/"src-c";
-     `Dir ~/"src-cmark"; `Dir ~/"src-latex";
-     `Dir ~/"src-ocaml"; `Fut ocaml_cond;
-     `X ~/"src-ocaml/brzo_read_cmi.ml"; (* Remove when we rid of topkg *)
-     ]
+    [`Dir ~/"src"; `Dir ~/"src/tool"; `Dir ~/"src/c";
+     `Dir ~/"src/cmark"; `Dir ~/"src/latex";
+     `Dir ~/"src/ocaml"; `Fut ocaml_cond;
+     `X ~/"src/ocaml/brzo_read_cmi.ml"; (* Remove when we rid of topkg *)
+    ]
   in
   B0_ocaml.exe "brzo" ~public:true ~doc:"brzo tool" ~requires ~srcs
 
@@ -59,8 +59,8 @@ let default =
       {|[["ocaml" "pkg/pkg.ml" "build" "--dev-pkg" "%{dev}%"]]|}
     |> ~~ B0_opam.install
       {|[[ "cmdliner" "install" "tool-support"
-           "_build/src/brzo_main.native:brzo" {ocaml:native}
-           "_build/src/brzo_main.byte:brzo" {!ocaml:native}
+           "_build/src/tool/brzo_main.native:brzo" {ocaml:native}
+           "_build/src/tool/brzo_main.byte:brzo" {!ocaml:native}
            "%{prefix}%"]]|}
     |> ~~ B0_opam.depends [
       "ocaml", {|>= "4.14.0"|};

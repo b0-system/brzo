@@ -1,13 +1,15 @@
 true : bin_annot, safe_string
-true : package(cmdliner), package(b0.std), package(b0), \
+true : package(cmdliner), package(b0.std), package(b0.memo), \
        package(b0.file), package(b0.kit), package(compiler-libs.common)
 
-<src> : include
-<src-c> : include
-<src-cmark> : include
-<src-latex> : include
-<src-ocaml> : include
-<test> : include
 <attic> : -traverse
 <examples> : -traverse
 <_b0> : -traverse
+
+<src> : include
+<src/c> : include
+<src/cmark> : include
+<src/latex> : include
+<src/ocaml> : include
+<src/tool> : include
+<test> : include

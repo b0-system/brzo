@@ -283,7 +283,7 @@ module Conf : sig
     brzo_file:Fpath.t option -> cache_dir:Fpath.t -> cwd:Fpath.t ->
     domain_name:string option -> domain_confs:domain list ->
     hash_fun:(module B0_hash.T) -> jobs:int -> log_file:Fpath.t ->
-    log_level:Log.level -> no_pager:bool -> outcome_mode:outcome_mode ->
+    no_pager:bool -> outcome_mode:outcome_mode ->
     output_outcome_path:bool -> pdf_viewer:Cmd.t option -> root:Fpath.t ->
     srcs_i:Fpath.Set.t -> srcs_x:Fpath.Set.t -> fmt_styler:Fmt.styler ->
     web_browser:Cmd.t option -> unit -> t
@@ -324,9 +324,6 @@ module Conf : sig
 
   val log_file : t -> Fpath.t
   (** [log_file] is the absolute path to the build log file. *)
-
-  val log_level : t -> Log.level
-  (** [log_level] is the desired log level. *)
 
   val hash_fun : t -> (module B0_hash.T)
   (** [hash_fun] is the hash function to use for build caching. *)

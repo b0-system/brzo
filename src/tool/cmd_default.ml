@@ -36,20 +36,22 @@ module Default = struct
   let pre_outcomes = List.map Brzo_outcome.pre_outcome outcomes
 end
 
-let default c =
+let default ~conf =
   Log.if_error ~use:Brzo.Exit.undefined_domain @@
-  match Brzo_domain.of_conf c Brzo_domain_list.v with
-  | Error _ when Brzo.Conf.outcome_mode c = `Conf ->
-      Log.stdout (fun m -> m "%a" Brzo.Conf.pp_show c); Ok Brzo.Exit.ok
-  | r -> Result.bind r @@ fun domain -> Ok (Brzo_domain.run c domain)
+  match Brzo_domain.of_conf conf Brzo_domain_list.v with
+  | Error _ when Brzo.Conf.outcome_mode conf = `Conf ->
+      Log.stdout (fun m -> m "%a" Brzo.Conf.pp_show conf); Ok Brzo.Exit.ok
+  | r -> Result.bind r @@ fun domain -> Ok (Brzo_domain.run conf domain)
 
 (* Command line interface *)
 
 open Cmdliner
+open Cmdliner.Term.Syntax
 
 let term =
   let domain = Brzo_domain.V (module Default) in
-  Term.(const default $ Brzo_tie_conf.for_domain ~domain)
+  let+ conf = Brzo_tie_conf.for_domain ~domain in
+  default ~conf
 
 let cmd =
   let doc = "Default domain (default command)" in
@@ -57,7 +59,7 @@ let cmd =
   let exits = Brzo.Exit.Info.domain_cmd in
   let man = [
     `S Manpage.s_description;
-    `P "The $(tname) command has the outcomes for the default domain.";
+    `P "The $(cmd) command has the outcomes for the default domain.";
     `P "The default domain is either automatically selected according to \
         the sources that are present in the BRZO root or explicitely set \
         by the BRZO file. Use $(b,brzo domain) to determine which default
@@ -68,4 +70,4 @@ let cmd =
     `S Brzo.Cli.s_outcome_mode;
     Brzo.Cli.man_see_manual; ]
   in
-  Cmd.v (Cmd.info "default" ~doc ~docs ~exits ~man) term
+  Cmd.make (Cmd.info "default" ~doc ~docs ~exits ~man) term

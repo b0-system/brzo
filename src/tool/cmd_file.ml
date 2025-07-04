@@ -33,13 +33,13 @@ let get_spath = get_action_arg Sexp.path_of_string ~kind:"s-expression path"
 let get_caret = get_action_arg Sexp.caret_of_string ~kind:"s-expression caret"
 let get_sexps = get_action_arg Brzo.Sexp.of_string ~kind:"s-expression"
 
-let get_brzo_file c k =
+let get_brzo_file ~conf k =
   Log.if_error' ~use:Brzo.Exit.conf_error @@
-  match Brzo.Conf.brzo_file c with
+  match Brzo.Conf.brzo_file conf with
   | Some file -> k file
   | None ->
       let pp_root = Fmt.code' Fpath.pp_unquoted in
-      Fmt.error "No BRZO file found in root %a" pp_root (Brzo.Conf.root c)
+      Fmt.error "No BRZO file found in root %a" pp_root (Brzo.Conf.root conf)
 
 let get_sexp_of_file file k =
   Log.if_error' ~header:"" ~use:Brzo.Exit.conf_error @@
@@ -57,20 +57,20 @@ let sexp_query query sexp k =
   Log.if_error' ~header:"" ~use:Brzo.Exit.no_such_sexp_path @@
   Result.bind (Brzo.Sexp.query query sexp) k
 
-let delete c spath dry_run =
+let delete ~conf ~spath ~dry_run =
   Log.if_error ~use:Brzo.Exit.some_error @@
-  get_brzo_file c @@ fun file ->
+  get_brzo_file ~conf @@ fun file ->
   get_sexp_of_file file @@ fun sexp ->
   get_spath spath @@ fun spath ->
   sexp_query (Sexpq.delete_at_path ~must_exist:true spath) sexp @@ fun sexp ->
   update_file ~dry_run file sexp @@ fun () ->
   Ok Brzo.Exit.ok
 
-let edit c =
+let edit ~conf =
   Log.if_error ~use:Brzo.Exit.some_error @@
-  let brzo_file = match Brzo.Conf.brzo_file c with
+  let brzo_file = match Brzo.Conf.brzo_file conf with
   | Some file -> file
-  | None -> Fpath.(Brzo.Conf.root c / Brzo.Conf.brzo_file_name)
+  | None -> Fpath.(Brzo.Conf.root conf / Brzo.Conf.brzo_file_name)
   in
   let* editor = B0_editor.find () in
   let* exit = B0_editor.edit_files editor [brzo_file] in
@@ -78,9 +78,9 @@ let edit c =
   | `Exited 0 -> Ok Brzo.Exit.ok
   | _ -> Ok Brzo.Exit.some_error
 
-let get c spath =
+let get ~conf ~spath =
   Log.if_error ~use:Brzo.Exit.some_error @@
-  get_brzo_file c @@ fun file ->
+  get_brzo_file ~conf @@ fun file ->
   get_sexp_of_file file @@ fun sexp ->
   match spath with
   | None -> show_sexp Sexp.pp_seq_layout (fst sexp); Ok Brzo.Exit.ok
@@ -95,17 +95,17 @@ let get c spath =
       show_sexp Fmt.(list ~sep:sp Sexp.pp) sexp;
       Ok Brzo.Exit.ok
 
-let path c =
+let path ~conf =
   Log.if_error ~use:Brzo.Exit.some_error @@
-  get_brzo_file c @@ fun file ->
+  get_brzo_file ~conf @@ fun file ->
   Log.stdout (fun m -> m "%a" Fpath.pp_unquoted file);
   Ok Brzo.Exit.ok
 
-let set c caret sexps dry_run =
+let set ~conf ~caret ~sexps ~dry_run =
   Log.if_error ~use:Brzo.Exit.some_error @@
   get_caret caret @@ fun caret ->
   get_sexps sexps @@ fun sexps ->
-  get_brzo_file c @@ fun file ->
+  get_brzo_file ~conf @@ fun file ->
   get_sexp_of_file file @@ fun sexp ->
   let query = Sexpq.splice_at_caret ~must_exist:false caret ~rep:sexps in
   sexp_query query sexp @@ fun sexp ->
@@ -115,6 +115,7 @@ let set c caret sexps dry_run =
 (* Command line interface *)
 
 open Cmdliner
+open Cmdliner.Term.Syntax
 
 let dry_run =
   let doc = "Do not edit the BRZO file in place but show the result on stdout."
@@ -125,92 +126,92 @@ let subcmd
     ?(exits = Brzo.Exit.Info.base_cmd) ?(envs = []) name ~doc ~descr term
   =
   let man = [`S Manpage.s_description; descr] in
-  Cmd.v (Cmd.info name ~doc ~exits ~envs ~man) term
-
-let path_term = Term.(const path $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file)
+  Cmd.make (Cmd.info name ~doc ~exits ~envs ~man) term
 
 (* Commands *)
 
 let delete =
   let doc = "Delete an s-expression from the BRZO file" in
   let descr = `Blocks [
-      `P "$(tname) delete the s-expression at path $(i,SPATH) from the BRZO \
+      `P "$(cmd) delete the s-expression at path $(i,SPATH) from the BRZO \
           file. If $(i,SPATH) ends with a key index it removes the binding.";
       `P "If $(b,--dry-run) is specified the file is not modified and the \
           result of the operation on the BRZO file is output on $(b,stdout)." ]
   in
-  let spath =
-    let doc = "The s-expression path to act on. See $(mname) $(b,file --help) \
+  subcmd "delete" ~doc ~descr @@
+  let+ conf = Brzo_tie_conf.auto_cwd_root_and_no_brzo_file
+  and+ spath =
+    let doc = "The s-expression path to act on. See $(tool) $(b,file --help) \
                for the syntax." in
     Arg.(required & pos 0 (some string) None & info [] ~doc ~docv:"SPATH")
-  in
-  subcmd "delete" ~doc ~descr
-    Term.(const delete $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $
-          spath $ dry_run)
+  and+ dry_run in
+  delete ~conf ~spath ~dry_run
 
 let edit =
   let doc = "Edit or create the BRZO file" in
-  let descr = `P "$(tname) edits opens the BRZO file in your editor." in
+  let descr = `P "$(cmd) edits opens the BRZO file in your editor." in
   let envs = B0_editor.Env.infos in
-  subcmd "edit" ~doc ~envs ~descr
-    Term.(const edit $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file)
+  subcmd "edit" ~doc ~envs ~descr @@
+  let+ conf = Brzo_tie_conf.auto_cwd_root_and_no_brzo_file in
+  edit ~conf
 
 let get =
   let doc = "Get an s-expression from the BRZO file" in
   let descr =
-    `P "$(tname) outputs the s-expression bound to path $(i,SPATH). \
+    `P "$(cmd) outputs the s-expression bound to path $(i,SPATH). \
         If no path is specified the whole BRZO file is output. Key bindings \
         are returned as a sequence of s-expressions."
   in
-  let spath =
-    let doc = "The s-expression path to get. See $(mname) $(b,file --help) \
+  subcmd "get" ~doc ~descr @@
+  let+ conf = Brzo_tie_conf.auto_cwd_root_and_no_brzo_file
+  and+ spath =
+    let doc = "The s-expression path to get. See $(tool) $(b,file --help) \
                for the path syntax." in
     Arg.(value & pos 0 (some string) None & info [] ~doc ~docv:"SPATH")
   in
-  subcmd "get" ~doc ~descr
-    Term.(const get $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $ spath)
+  get ~conf ~spath
 
 let path =
   let doc = "Output the BRZO file path (default command)" in
-  let descr = `P "$(tname) outputs the file path to the BRZO file. \
-                  Errors if there is none."
+  let descr =
+    `P "$(cmd) outputs the file path to the BRZO file. Errors if there is none."
   in
-  subcmd "path" ~doc ~descr path_term
+  subcmd "path" ~doc ~descr @@
+  let+ conf = Brzo_tie_conf.auto_cwd_root_and_no_brzo_file in
+  path ~conf
 
 let set =
   let doc = "Set an s-expression in the BRZO file" in
   let descr = `Blocks [
-      `P "$(tname) splices the s-expression sequence $(i,SEXPSEQ) (a single \
+      `P "$(cmd) splices the s-expression sequence $(i,SEXPSEQ) (a single \
           cli arg) at the caret $(i,CARET) in the BRZO file.";
       `P "To set a key binding use a sequence of s-expressions not a list; \
            the latter sets the first element of the binding to a list.";
       `P "If $(b,--dry-run) is specified the file is not modified and the \
           result of the operation on the BRZO file is output on $(b,stdout)."]
   in
-  let caret =
-    let doc = "The s-expression caret to act on. See $(mname) $(b,file --help) \
+  subcmd "set" ~doc ~descr @@
+  let+ conf = Brzo_tie_conf.auto_cwd_root_and_no_brzo_file
+  and+ caret =
+    let doc = "The s-expression caret to act on. See $(tool) $(b,file --help) \
                for the caret syntax."
     in
     Arg.(required & pos 0 (some string) None & info [] ~doc ~docv:"CARET")
-  in
-  let sexps =
+  and+ sexps =
     let doc =
       "The $(b,set) value. This is a sequence of s-expressions \
        spliced at the caret. The sequence must be a single cli argument."
     in
     Arg.(required & pos 1 (some string) None & info [] ~doc ~docv:"SEXPSEQ")
-  in
-  subcmd "set" ~doc ~descr
-    Term.(const set $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $
-          caret $ sexps $ dry_run)
+  and+ dry_run in
+  set ~conf ~caret ~sexps ~dry_run
 
-let subs = [delete; edit; path; get; set]
 let cmd =
   let doc = "Query and edit the BRZO file" in
   let exits = Brzo.Exit.Info.base_cmd in
   let man = [
     `S Manpage.s_description;
-    `P "The $(tname) command queries and edits the BRZO file. The default \
+    `P "The $(cmd) command queries and edits the BRZO file. The default \
         command is $(b,path).";
     `P "The file is edited from the command line by using s-expression paths \
         and carets which are described in a dedicated section below.";
@@ -239,4 +240,5 @@ let cmd =
           $(b,ocaml.libs)";
     Brzo.Cli.man_see_manual ]
   in
-  Cmd.group (Cmd.info "file" ~doc ~exits ~man) ~default:path_term subs
+  Cmd.group (Cmd.info "file" ~doc ~exits ~man) @@
+  [delete; edit; path; get; set]

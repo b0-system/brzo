@@ -16,13 +16,13 @@ let exts_of_doms = function
     try Ok (Some (List.fold_left add_domain String.Set.empty doms)) with
     | Failure e -> Error e
 
-let sources c doms =
+let sources ~conf ~doms =
   Log.if_error ~use:Brzo.Exit.undefined_domain @@
   let* exts = exts_of_doms doms in
   Log.if_error' ~use:Brzo.Exit.some_error @@
-  let* pager = B0_pager.find ~don't:(Brzo.Conf.no_pager c) () in
+  let* pager = B0_pager.find ~don't:(Brzo.Conf.no_pager conf) () in
   let* () = B0_pager.page_stdout pager in
-  let* src_by_exts = Brzo.Conf.srcs c in
+  let* src_by_exts = Brzo.Conf.srcs conf in
   let srcs =
     let add_files ext srcs acc = match exts with
     | None -> List.rev_append srcs acc
@@ -40,6 +40,7 @@ let sources c doms =
 (* Command line interface *)
 
 open Cmdliner
+open Cmdliner.Term.Syntax
 
 let cmd =
   let doc = "Show source files" in
@@ -47,15 +48,16 @@ let cmd =
   let envs = B0_pager.Env.infos in
   let man = [
     `S Manpage.s_description;
-    `P "The $(tname) command lists the source files considered by a $(mname) \
+    `P "The $(cmd) command lists the source files considered by a $(tool) \
         invocation.";
     Brzo.Cli.man_see_manual; ]
   in
-  let doms =
+  Cmd.v (Cmd.info "sources" ~doc ~exits ~envs ~man) @@
+  let+ conf = Brzo_tie_conf.use_brzo_file
+  and+ doms =
     let doc =
       "Output files considered for selecting domain $(docv). Repeatable."
     in
     Arg.(value & opt_all string [] & info ["d"; "domain"] ~doc ~docv:"DOMAIN")
   in
-  Cmd.v (Cmd.info "sources" ~doc ~exits ~envs ~man)
-    Term.(const sources $ Brzo_tie_conf.use_brzo_file $ doms)
+  sources ~conf ~doms

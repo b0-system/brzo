@@ -11,15 +11,15 @@ let copy src dst =
 
 let ocaml_conditional c =
   let maj, min, _, _ = Conf.OCaml.version (Conf.OCaml.v c `Host_os) in
-  let dst = "src-ocaml/brzo_read_cmi.ml" in
+  let dst = "src/ocaml/brzo_read_cmi.ml" in
   match (maj, min) < (4,08) with
-  | true  -> copy "src-ocaml/brzo_read_cmi_pre_408/brzo_read_cmi.ml" dst
-  | false -> copy "src-ocaml/brzo_read_cmi_geq_408/brzo_read_cmi.ml" dst
+  | true  -> copy "src/ocaml/brzo_read_cmi_pre_408/brzo_read_cmi.ml" dst
+  | false -> copy "src/ocaml/brzo_read_cmi_geq_408/brzo_read_cmi.ml" dst
 
 let () =
   let build = Pkg.build ~pre:ocaml_conditional () in
   Pkg.describe ~build "brzo" @@ fun c ->
-  Ok [ Pkg.mllib "brzo.mllib";
-       Pkg.bin "src/brzo_main" ~dst:"brzo";
+  Ok [ Pkg.mllib "src/brzo.mllib";
+       Pkg.bin "src/tool/brzo_main" ~dst:"brzo";
        Pkg.doc "doc/index.mld" ~dst:"odoc-pages/index.mld";
        Pkg.doc "doc/manual.mld" ~dst:"odoc-pages/manual.mld"; ]

@@ -273,7 +273,6 @@ module Conf = struct
       hash_fun : (module B0_hash.T);
       jobs : int;
       log_file : Fpath.t;
-      log_level : Log.level;
       memo : (B0_memo.t, string) result Lazy.t;
       no_pager : bool;
       outcome_mode : outcome_mode;
@@ -288,7 +287,7 @@ module Conf = struct
 
   let v
       ~action_args ~background ~b0_dir ~brzo_file ~cache_dir ~cwd ~domain_name
-      ~domain_confs ~hash_fun ~jobs ~log_file ~log_level ~no_pager
+      ~domain_confs ~hash_fun ~jobs ~log_file ~no_pager
       ~outcome_mode ~output_outcome_path ~pdf_viewer ~root ~srcs_i ~srcs_x
       ~fmt_styler ~web_browser ()
     =
@@ -296,7 +295,7 @@ module Conf = struct
     let srcs = lazy (collect_srcs ~srcs_i ~srcs_x) in
     let memo = lazy (Memo.create ~hash_fun ~cwd ~cache_dir ~trash_dir ~jobs) in
     { action_args; background; b0_dir; brzo_file; cache_dir; cwd; domain_name;
-      domain_confs; hash_fun; jobs; log_file; log_level; memo; no_pager;
+      domain_confs; hash_fun; jobs; log_file; memo; no_pager;
       outcome_mode; output_outcome_path; pdf_viewer; root; srcs_i; srcs_x;
       srcs; fmt_styler; web_browser; }
 
@@ -320,7 +319,6 @@ module Conf = struct
   let hash_fun c = c.hash_fun
   let jobs c = c.jobs
   let log_file c = c.log_file
-  let log_level c = c.log_level
   let memo c = Lazy.force c.memo
   let outcome_mode c = c.outcome_mode
   let output_outcome_path c = c.output_outcome_path
@@ -540,14 +538,13 @@ module Conf_setup = struct
 
   let with_cli
       ~auto_cwd_root ~use_brzo_file ~action_args ~background ~b0_dir
-      ~brzo_file ~cache_dir ~cwd ~hash_fun ~jobs ~log_file ~log_level ~no_pager
+      ~brzo_file ~cache_dir ~cwd ~hash_fun ~jobs ~log_file ~no_pager
       ~outcome_name ~outcome_mode ~output_outcome_path
       ~pdf_viewer ~root ~srcs_i ~srcs_x ~color ~web_browser ~all_domains
       ~domain ()
     =
     let fmt_styler = B0_std_cli.get_styler color in
-    let log_level = B0_std_cli.get_log_level log_level in
-    B0_std_cli.setup fmt_styler log_level ~log_spawns:Log.Debug;
+    Fmt.set_styler fmt_styler;
     let set_cwd = match cwd with None -> Ok () | Some c -> Os.Dir.set_cwd c in
     Result.bind set_cwd @@ fun () ->
     Result.bind (Os.Dir.cwd ()) @@ fun cwd ->
@@ -568,13 +565,14 @@ module Conf_setup = struct
     let hash_fun = B0_cli.Memo.get_hash_fun ~hash_fun in
     let jobs = B0_cli.Memo.get_jobs ~jobs in
     Ok (Conf.v ~action_args ~background ~b0_dir ~brzo_file ~cache_dir ~cwd
-          ~domain_name ~domain_confs ~hash_fun ~jobs ~log_file ~log_level
+          ~domain_name ~domain_confs ~hash_fun ~jobs ~log_file
           ~no_pager ~outcome_mode ~output_outcome_path ~pdf_viewer ~root
           ~srcs_i ~srcs_x ~fmt_styler ~web_browser ())
 end
 
 module Cli = struct
   open Cmdliner
+  open Cmdliner.Term.Syntax
 
   (* Manual fragments *)
 
@@ -669,9 +667,7 @@ module Cli = struct
     let doc_none = "$(b,.log) in $(b,brzo) directory of b0 directory" in
     B0_cli.Memo.log_file ~docs ~doc_none ~env ()
 
-  let log_level =
-    B0_std_cli.log_level ~docs ~env:(Cmd.Env.info "BRZO_VERBOSITY") ()
-
+  let log_level = B0_std_cli.log_level ~docs ()
   let no_pager = B0_pager.don't ~docs ()
   let pdf_viewer = B0_pdf_viewer.pdf_viewer ~docs ()
 
@@ -729,16 +725,16 @@ module Cli = struct
   (* Configuration *)
 
   let conf ~auto_cwd_root ~use_brzo_file ~domain ~all_domains =
-    let c
+    let c ()
         action_args b0_dir background brzo_file cache_dir cwd hash_fun jobs
-        log_file log_level no_pager outcome_name outcome_mode
+        log_file no_pager outcome_name outcome_mode
         output_outcome_path pdf_viewer root srcs_i srcs_x color web_browser
         domain
       =
       Result.map_error (fun s -> `Msg s) @@
       Conf_setup.with_cli
         ~auto_cwd_root ~use_brzo_file ~action_args ~background ~b0_dir
-        ~brzo_file ~cache_dir ~cwd ~hash_fun ~jobs ~log_file ~log_level
+        ~brzo_file ~cache_dir ~cwd ~hash_fun ~jobs ~log_file
         ~no_pager ~outcome_name ~outcome_mode ~output_outcome_path ~pdf_viewer
         ~root ~srcs_i ~srcs_x ~color ~web_browser ~all_domains ~domain ()
     in
@@ -747,9 +743,11 @@ module Cli = struct
     let output_outcome_path = output_outcome_path domain in
     let action_args = action_args domain in
     let domain_cli_conf = domain_cli_conf domain in
+    let set_log_level = B0_std_cli.set_log_level () in
     Term.term_result @@
-    Term.(const c $ action_args $ b0_dir $ background $ brzo_file $ cache_dir $
-          cwd $ hash_fun $ jobs $ log_file $ log_level $ no_pager $
+    Term.(const c $ set_log_level $ action_args $ b0_dir $ background $
+          brzo_file $
+          cache_dir $ cwd $ hash_fun $ jobs $ log_file $ no_pager $
           outcome_name $ outcome_mode $ output_outcome_path $
           pdf_viewer $ root $ srcs_i $ srcs_x $ color $ web_browser $
           domain_cli_conf)

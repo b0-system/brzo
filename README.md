@@ -1,6 +1,5 @@
 brzo — Quick-setting builds
--------------------------------------------------------------------------------
-%%VERSION%%
+===========================
 
 Brzo is a build tool to quickly turn source files of various languages
 into executable programs and documents.

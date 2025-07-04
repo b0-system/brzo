@@ -5,6 +5,7 @@
 
 open B0_std
 open Cmdliner
+open Cmdliner.Term.Syntax
 
 let domain_cmd (Brzo_domain.V d as domain) =
   let module D = (val d : Brzo_domain.T with type Conf.t = 'a) in
@@ -14,7 +15,7 @@ let domain_cmd (Brzo_domain.V d as domain) =
   let man = [
     `S Manpage.s_description;
     `P (Fmt.str
-          "The $(tname) command has outcomes for the %s domain. More \
+          "The $(cmd) command has outcomes for the %s domain. More \
            information is available in the manual, see $(b,odig doc brzo)."
           D.doc_name);
     `S Manpage.s_arguments;
@@ -24,15 +25,9 @@ let domain_cmd (Brzo_domain.V d as domain) =
     `S Brzo.Cli.s_outcome_mode;
     Brzo.Cli.man_see_manual; ]
   in
-  Cmd.v (Cmd.info D.name ~doc ~docs ~sdocs ~exits ~man ~man_xrefs)
-    Term.(const Brzo_domain.run $ Brzo_tie_conf.for_domain ~domain $
-          const domain)
-
-let cmds =
-  Brzo_cmd_cache.cmd :: Brzo_cmd_default.cmd :: Brzo_cmd_domain.cmd ::
-  Brzo_cmd_delete.cmd :: Brzo_cmd_file.cmd :: Brzo_cmd_log.cmd ::
-  Brzo_cmd_root.cmd :: Brzo_cmd_sources.cmd ::
-  List.rev_map domain_cmd Brzo_domain_list.v
+  Cmd.make (Cmd.info D.name ~doc ~docs ~sdocs ~exits ~man ~man_xrefs) @@
+  let+ conf = Brzo_tie_conf.for_domain ~domain in
+  Brzo_domain.run conf domain
 
 let tool =
   let doc = "Quick-setting builds" in
@@ -40,17 +35,17 @@ let tool =
   let exits = Brzo.Exit.Info.domain_cmd in
   let man = [
     `S Manpage.s_synopsis;
-    `P "$(mname) -- [$(i,ARG)]…"; `Noblank;
-    `P "$(mname) $(i,COMMAND) …";
+    `P "$(tool) -- [$(i,ARG)]…"; `Noblank;
+    `P "$(tool) $(i,COMMAND) …";
     `S Manpage.s_description;
-    `P "$(mname) quickly turns source files of various languages into \
+    `P "$(tool) quickly turns source files of various languages into \
         executable programs and documents. It has support for C, CommonMark, \
         LaTeX and OCaml.";
-    `Pre "Use $(mname) -- [$(b,ARG)]… to build and execute a program with \
+    `Pre "Use $(tool) -- [$(b,ARG)]… to build and execute a program with \
           given arguments."; `Noblank;
     `Pre
-      "Use $(mname) $(b,--doc) to build and show source file documentation.";
-    `Pre "Use $(mname) [$(i,COMMAND)]… $(b,--help) for help about any command.";
+      "Use $(tool) $(b,--doc) to build and show source file documentation.";
+    `Pre "Use $(tool) [$(i,COMMAND)]… $(b,--help) for help about any command.";
     `P "More information is available in the manual, see $(b,odig doc brzo).";
     `S Brzo.Cli.s_domains;
     `S Manpage.s_arguments;
@@ -60,9 +55,12 @@ let tool =
     `S Manpage.s_bugs;
     `P "Report them, see $(i,%%PKG_HOMEPAGE%%) for contact information."; ]
   in
-  Cmd.group
-    (Cmd.info "brzo" ~version:"%%VERSION%%" ~doc ~sdocs ~exits ~man)
-    ~default:Brzo_cmd_default.term cmds
+  Cmd.group (Cmd.info "brzo" ~version:"%%VERSION%%" ~doc ~sdocs ~exits ~man)
+    ~default:Cmd_default.term @@
+  Cmd_cache.cmd :: Cmd_default.cmd :: Cmd_domain.cmd ::
+  Cmd_delete.cmd :: Cmd_file.cmd :: Cmd_log.cmd ::
+  Cmd_root.cmd :: Cmd_sources.cmd ::
+  List.rev_map domain_cmd Brzo_domain_list.v
 
 let main () =
   Log.time (fun _ m -> m "total time brzo %%VERSION%%") @@ fun () ->

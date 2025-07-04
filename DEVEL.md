@@ -1,3 +1,10 @@
+This project uses (perhaps the development version of) [`b0`] for
+development. Consult [b0 occasionally] for quick hints on how to
+perform common development tasks.
+
+[`b0`]: https://erratique.ch/software/b0
+[b0 occasionally]: https://erratique.ch/software/b0/doc/occasionally.html
+
 # Building
 
     opam install topkg-care
@@ -13,10 +20,6 @@ Alternatively if you have a `brzo` in your path:
     topkg run brzo_bin
     brzo                # Be wary of the infinite build loop
 
-
-Invoking `source dev-env` declares a `brzo` function that uses a brzo
-built by one of the alternatives above (favouring a brzo build if 
-it can be found).
 
 # Adding a new domain
 

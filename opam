@@ -47,8 +47,8 @@ install: [
   "cmdliner"
   "install"
   "tool-support"
-  "_build/src/brzo_main.native:brzo" {ocaml:native}
-  "_build/src/brzo_main.byte:brzo" {!ocaml:native}
+  "_build/src/tool/brzo_main.native:brzo" {ocaml:native}
+  "_build/src/tool/brzo_main.byte:brzo" {!ocaml:native}
   "%{prefix}%"
 ]
 dev-repo: "git+https://erratique.ch/repos/brzo.git"
