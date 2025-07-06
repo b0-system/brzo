@@ -35,5 +35,5 @@ let cmd =
   in
   Cmd.v (Cmd.info "log" ~doc ~exits ~envs ~man)
     Term.(const log $ Brzo_tie_conf.auto_cwd_root_and_no_brzo_file $
-          B0_cli.Memo.Log.out_format_cli () $ B0_std_cli.output_format () $
+          B0_cli.Memo.Log.format_cli () $ B0_std_cli.output_format () $
           B0_cli.Op.query_cli ())
