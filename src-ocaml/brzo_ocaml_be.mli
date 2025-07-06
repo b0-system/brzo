@@ -1,6 +1,6 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2019 The brzo programmers. All rights reserved.
-   Distributed under the ISC license, see terms at the end of the file.
+   SPDX-License-Identifier: ISC
   ---------------------------------------------------------------------------*)
 
 (** OCaml domain best-effort helpers. *)
@@ -58,19 +58,3 @@ val suggest_pkgs_for_modname : B0_ocaml.Modname.t ->
   pkgs:(string * string option) list ->
   [ `Fuzzy_prefix_match of string list | `Prefix_match of string | `None ]
 (** [suggest_package_for_mod_name m pkgs] does basically what it says. *)
-
-(*---------------------------------------------------------------------------
-   Copyright (c) 2019 The brzo programmers
-
-   Permission to use, copy, modify, and/or distribute this software for any
-   purpose with or without fee is hereby granted, provided that the above
-   copyright notice and this permission notice appear in all copies.
-
-   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-  ---------------------------------------------------------------------------*)

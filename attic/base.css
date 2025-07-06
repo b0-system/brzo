@@ -1,7 +1,7 @@
 @charset "UTF-8";
 
 /* Copyright (c) 2020 The brzo programmers. All rights reserved.
-   Distributed under the ISC license, see terms at the end of the file. */
+   SPDX-License-Identifier: ISC */
 
 * { margin: 0; padding: 0; box-sizing: border-box;
     font-size: inherit; font: inherit; font-weight: inherit;
