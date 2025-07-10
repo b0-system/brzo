@@ -4,6 +4,7 @@
   ---------------------------------------------------------------------------*)
 
 open B0_std
+open Result.Syntax
 open B0_sexp
 
 module Memo = struct
@@ -156,9 +157,9 @@ module Sexp = struct
     Sexp.seq_of_string' ~pp_error:pp_read_error ?file s
 
   let of_file file =
-    Result.bind (Os.File.read file) @@ fun s ->
-    Result.bind (of_string ~file s) @@
-    fun sexp -> Ok (sexp, [])
+    let* s = Os.File.read file in
+    let* sexp = of_string ~file s in
+    Ok (sexp, [])
 
   let query q s =
     Sexpq.error_to_string ~pp_error:pp_query_error (Sexpq.query_at_path q s)
@@ -192,7 +193,7 @@ module Conf = struct
     | None -> Sexp.query c.conf sexp
 
     let append c cli sexp =
-      Result.bind (Sexp.query c.conf sexp) @@ function conf ->
+      let* conf = Sexp.query c.conf sexp in
       Ok (match cli with None -> conf | Some cli -> List.append conf cli)
   end
 
@@ -282,14 +283,13 @@ module Conf = struct
       srcs : (B0_file_exts.map, string) result Lazy.t;
       srcs_i : Fpath.Set.t;
       srcs_x : Fpath.Set.t;
-      fmt_styler : Fmt.styler;
       web_browser : Cmd.t option; }
 
-  let v
+  let make
       ~action_args ~background ~b0_dir ~brzo_file ~cache_dir ~cwd ~domain_name
       ~domain_confs ~hash_fun ~jobs ~log_file ~no_pager
       ~outcome_mode ~output_outcome_path ~pdf_viewer ~root ~srcs_i ~srcs_x
-      ~fmt_styler ~web_browser ()
+      ~web_browser ()
     =
     let trash_dir = Fpath.(b0_dir / B0_cli.Memo.trash_dir_name) in
     let srcs = lazy (collect_srcs ~srcs_i ~srcs_x) in
@@ -297,7 +297,7 @@ module Conf = struct
     { action_args; background; b0_dir; brzo_file; cache_dir; cwd; domain_name;
       domain_confs; hash_fun; jobs; log_file; memo; no_pager;
       outcome_mode; output_outcome_path; pdf_viewer; root; srcs_i; srcs_x;
-      srcs; fmt_styler; web_browser; }
+      srcs; web_browser; }
 
   let action_args c = c.action_args
   let background c = c.background
@@ -328,7 +328,6 @@ module Conf = struct
   let srcs c = Lazy.force c.srcs
   let srcs_i c = c.srcs_i
   let srcs_x c = c.srcs_x
-  let fmt_styler c = c.fmt_styler
   let web_browser c = c.web_browser
 
   let auto = Fmt.any "<auto>"
@@ -360,6 +359,7 @@ end
 (* Conf setup handles cli and brzo file setup *)
 
 module Conf_setup = struct
+  open Result.Syntax
 
   (* Root finding *)
 
@@ -381,7 +381,7 @@ module Conf_setup = struct
     in
     let root = match root with
     | Some root ->
-        Result.bind (Os.Path.realpath root) @@ fun root ->
+        let* root = Os.Path.realpath root in
         Ok (Some (root, brzo_file_in ~dir:root))
     | None ->
         let rec loop dir = match brzo_file_in ~dir with
@@ -436,15 +436,15 @@ module Conf_setup = struct
     let onames = Pre_domain.outcome_names (Pre_domain.V (module D)) in
     let outcomeq = Sexpq.(some (atomic (enum ~kind:outcome_key onames))) in
     let outcomeq = Sexpq.key outcome_key ~absent:None outcomeq in
-    Result.bind (Sexp.query domain_dictq sexp) @@ fun dict ->
-    Result.bind (Sexp.query validateq dict) @@ fun _ ->
-    Result.bind (Sexp.query outcomeq dict) @@ fun outcome_conf ->
+    let* dict = Sexp.query domain_dictq sexp in
+    let* _ = Sexp.query validateq dict in
+    let* outcome_conf = Sexp.query outcomeq dict in
     let outcome = match outcome_name with
     | Some o -> o
     | None -> Option.value ~default:"exec" outcome_conf
     in
-    Result.bind (parse dict) @@ fun c ->
-    Ok (Conf.Domain ((module D), outcome, c))
+    let* conf = parse dict in
+    Ok (Conf.Domain ((module D), outcome, conf))
 
   let parse_domain_conf ~outcome_name sexp (Pre_domain.V (module D)) =
     parse_with_fun ~outcome_name (module D) D.Conf.parse sexp
@@ -468,7 +468,7 @@ module Conf_setup = struct
     let doms = List.map Pre_domain.name all_domains in
     let keys = List.rev_append doms common_keys in
     let validate = Some (String.Set.of_list keys) in
-    Result.bind (Sexp.query (Sexpq.key_dom ~validate) sexp) @@ fun _ ->
+    let* _ = Sexp.query (Sexpq.key_dom ~validate) sexp in
     let results = parse_domain_confs ~outcome_name ~all_domains ~domain sexp in
     let result acc r = match acc, r with
     | Error e, Error e' -> Error (String.concat "\n" [e; e'])
@@ -540,34 +540,33 @@ module Conf_setup = struct
       ~auto_cwd_root ~use_brzo_file ~action_args ~background ~b0_dir
       ~brzo_file ~cache_dir ~cwd ~hash_fun ~jobs ~log_file ~no_pager
       ~outcome_name ~outcome_mode ~output_outcome_path
-      ~pdf_viewer ~root ~srcs_i ~srcs_x ~color ~web_browser ~all_domains
+      ~pdf_viewer ~root ~srcs_i ~srcs_x ~web_browser ~all_domains
       ~domain ()
     =
-    let fmt_styler = B0_std_cli.get_styler color in
-    Fmt.set_styler fmt_styler;
-    let set_cwd = match cwd with None -> Ok () | Some c -> Os.Dir.set_cwd c in
-    Result.bind set_cwd @@ fun () ->
-    Result.bind (Os.Dir.cwd ()) @@ fun cwd ->
-    Result.bind (find_root_and_brzo_file ~auto_cwd_root ~cwd ~root ~brzo_file)
-    @@ fun (root, brzo_file) ->
-    Result.bind (read_brzo_file ~use_brzo_file brzo_file) @@ fun sexp ->
-    Result.bind
-      (parse_brzo_file ~common_keys ~all_domains ~domain ~outcome_name sexp) @@
-    fun domain_confs ->
-    Result.bind (get_domain_name ~all_domains ~domain sexp) @@
-    fun domain_name ->
-    Result.bind (get_outcome_mode ~outcome_mode sexp) @@ fun outcome_mode ->
-    Result.bind (get_srcs_ix ~root ~srcs_i ~srcs_x sexp) @@
-    fun (srcs_i, srcs_x) ->
+    let* () = match cwd with None -> Ok () | Some c -> Os.Dir.set_cwd c in
+    let* cwd = Os.Dir.cwd () in
+    let* (root, brzo_file) =
+      find_root_and_brzo_file ~auto_cwd_root ~cwd ~root ~brzo_file
+    in
+    let* sexp = read_brzo_file ~use_brzo_file brzo_file in
+    let* domain_confs =
+      parse_brzo_file ~common_keys ~all_domains ~domain ~outcome_name sexp
+    in
+    let* domain_name =
+      get_domain_name ~all_domains ~domain sexp
+    in
+    let* outcome_mode = get_outcome_mode ~outcome_mode sexp in
+    let* srcs_i, srcs_x = get_srcs_ix ~root ~srcs_i ~srcs_x sexp in
     let b0_dir = B0_cli.Memo.get_b0_dir ~cwd ~root ~b0_dir in
     let cache_dir = B0_cli.Memo.get_cache_dir ~cwd ~b0_dir ~cache_dir in
     let log_file = get_log_file ~cwd ~b0_dir ~log_file in
     let hash_fun = B0_cli.Memo.get_hash_fun ~hash_fun in
     let jobs = B0_cli.Memo.get_jobs ~jobs in
-    Ok (Conf.v ~action_args ~background ~b0_dir ~brzo_file ~cache_dir ~cwd
+    Ok (Conf.make
+          ~action_args ~background ~b0_dir ~brzo_file ~cache_dir ~cwd
           ~domain_name ~domain_confs ~hash_fun ~jobs ~log_file
           ~no_pager ~outcome_mode ~output_outcome_path ~pdf_viewer ~root
-          ~srcs_i ~srcs_x ~fmt_styler ~web_browser ())
+          ~srcs_i ~srcs_x ~web_browser ())
 end
 
 module Cli = struct
@@ -586,7 +585,6 @@ module Cli = struct
 
   (* General configuration cli arguments *)
 
-  let fpath = B0_std_cli.fpath
   let docs = Manpage.s_common_options
 
   let action_args =
@@ -596,8 +594,6 @@ module Cli = struct
     in
     Arg.(value & pos_all string [] & info [] ~doc ~docv:"ARG")
 
-  let b0_dir = B0_cli.Memo.b0_dir ()
-
   let brzo_file =
     let doc =
       Fmt.str "Use $(docv) for the BRZO file. Use with $(b,%a) to disable \
@@ -606,22 +602,18 @@ module Cli = struct
                replaces the BRZO file to use."
         Fpath.pp_quoted Fpath.null
     in
-    let docv = "FILE" in
     let env = Cmd.Env.info "BRZO_FILE" in
     let absent = "$(b,BRZO) file at the brzo root" in
-    Arg.(value & opt (some fpath) None &
-         info ["brzo-file"] ~absent ~env ~doc ~docv ~docs)
+    Arg.(value & opt (some B0_std_cli.filepath) None &
+         info ["brzo-file"] ~absent ~env ~doc ~docs)
 
-  let background = B0_web_browser.background ~docs ()
-  let web_browser = B0_web_browser.browser ~opts:["browser"] ~docs ()
-  let cache_dir = B0_cli.Memo.cache_dir ()
   let cwd =
     let doc =
       "Set the current working directory to $(docv) before doing anything. \
        Relative file path on the command line are interpreted relative to this \
        new cwd."
     in
-    Arg.(value & opt (some fpath) None & info ["C"] ~doc ~docv:"DIR" ~docs)
+    Arg.(value & opt (some B0_std_cli.dirpath) None & info ["C"] ~doc ~docs)
 
   let outcome_mode =
     let docs = s_outcome_mode in
@@ -652,24 +644,15 @@ module Cli = struct
        from the current working directory and moving upwards that has a \
        BRZO file."
     in
-    let docv = "DIR" in
     let env = Cmd.Env.info "BRZO_ROOT" in
     let none = "automatically determined" in
-    Arg.(value & opt (some ~none fpath) None &
-         info ["root"] ~env ~doc ~docv ~docs)
+    Arg.(value & opt (some ~none B0_std_cli.dirpath) None &
+         info ["root"] ~env ~doc ~docs)
 
-  let hash_fun =
-    B0_cli.Memo.hash_fun ~docs ~env:(Cmd.Env.info "BRZO_HASH_FUN") ()
-
-  let jobs = B0_cli.Memo.jobs ~docs ~env:(Cmd.Env.info "BRZO_JOBS") ()
   let log_file =
     let env = Cmd.Env.info "BRZO_LOG_FILE" in
     let doc_none = "$(b,.log) in $(b,brzo) directory of b0 directory" in
     B0_cli.Memo.log_file ~docs ~doc_none ~env ()
-
-  let log_level = B0_std_cli.log_level ~docs ()
-  let no_pager = B0_pager.don't ~docs ()
-  let pdf_viewer = B0_pdf_viewer.pdf_viewer ~docs ()
 
   let srcs_i =
     let doc =
@@ -678,8 +661,7 @@ module Cli = struct
        the BRZO file. If unspecified, this is the brzo root directory.
        Relative file paths are expressed relative to the brzo root directory."
     in
-    let docv = "PATH" in
-    Arg.(value & opt_all fpath [] & info ["i"; "srcs-i"] ~doc ~docv ~docs)
+    Arg.(value & opt_all B0_std_cli.path [] & info ["i"; "srcs-i"] ~doc ~docs)
 
   let srcs_x =
     let doc =
@@ -690,11 +672,7 @@ module Cli = struct
        explicitely via $(b,-i). Relative file paths are expressed relative to
        the brzo root directory."
     in
-    let docv = "PATH" in
-    Arg.(value & opt_all fpath [] & info ["x"; "srcs-x"] ~doc ~docv ~docs)
-
-  let color =
-    B0_std_cli.color ~docs ~env:(Cmd.Env.info "BRZO_COLOR") ()
+    Arg.(value & opt_all B0_std_cli.path [] & info ["x"; "srcs-x"] ~doc ~docs)
 
   (* Domain specific cli *)
 
@@ -725,30 +703,32 @@ module Cli = struct
   (* Configuration *)
 
   let conf ~auto_cwd_root ~use_brzo_file ~domain ~all_domains =
-    let c ()
-        action_args b0_dir background brzo_file cache_dir cwd hash_fun jobs
-        log_file no_pager outcome_name outcome_mode
-        output_outcome_path pdf_viewer root srcs_i srcs_x color web_browser
-        domain
-      =
-      Result.map_error (fun s -> `Msg s) @@
-      Conf_setup.with_cli
-        ~auto_cwd_root ~use_brzo_file ~action_args ~background ~b0_dir
-        ~brzo_file ~cache_dir ~cwd ~hash_fun ~jobs ~log_file
-        ~no_pager ~outcome_name ~outcome_mode ~output_outcome_path ~pdf_viewer
-        ~root ~srcs_i ~srcs_x ~color ~web_browser ~all_domains ~domain ()
-    in
-    let outcome_name = outcome_name domain in
-    let outcome_mode = outcome_mode domain in
-    let output_outcome_path = output_outcome_path domain in
-    let action_args = action_args domain in
-    let domain_cli_conf = domain_cli_conf domain in
-    let set_log_level = B0_std_cli.set_log_level () in
-    Term.term_result @@
-    Term.(const c $ set_log_level $ action_args $ b0_dir $ background $
-          brzo_file $
-          cache_dir $ cwd $ hash_fun $ jobs $ log_file $ no_pager $
-          outcome_name $ outcome_mode $ output_outcome_path $
-          pdf_viewer $ root $ srcs_i $ srcs_x $ color $ web_browser $
-          domain_cli_conf)
+    Term.term_result' @@
+    let+ () = B0_std_cli.set_no_color ()
+    and+ () = B0_std_cli.set_log_level ()
+    and+ action_args = action_args domain
+    and+ b0_dir = B0_cli.Memo.b0_dir ()
+    and+ background = B0_web_browser.background ~docs ()
+    and+ brzo_file
+    and+ cache_dir = B0_cli.Memo.cache_dir ()
+    and+ cwd
+    and+ hash_fun =
+      B0_cli.Memo.hash_fun ~docs ~env:(Cmd.Env.info "BRZO_HASH_FUN") ()
+    and+ jobs = B0_cli.Memo.jobs ~docs ~env:(Cmd.Env.info "BRZO_JOBS") ()
+    and+ log_file
+    and+ no_pager = B0_pager.don't ~docs ()
+    and+ outcome_name = outcome_name domain
+    and+ outcome_mode = outcome_mode domain
+    and+ output_outcome_path = output_outcome_path domain
+    and+ pdf_viewer = B0_pdf_viewer.pdf_viewer ~docs ()
+    and+ root
+    and+ srcs_i
+    and+ srcs_x
+    and+ web_browser = B0_web_browser.browser ~opts:["browser"] ~docs ()
+    and+ domain = domain_cli_conf domain in
+    Conf_setup.with_cli
+      ~auto_cwd_root ~use_brzo_file ~action_args ~background ~b0_dir
+      ~brzo_file ~cache_dir ~cwd ~hash_fun ~jobs ~log_file
+      ~no_pager ~outcome_name ~outcome_mode ~output_outcome_path ~pdf_viewer
+      ~root ~srcs_i ~srcs_x ~web_browser ~all_domains ~domain ()
 end

@@ -278,15 +278,15 @@ module Conf : sig
   type t
   (** The type for configurations. *)
 
-  val v :
+  val make :
     action_args:string list -> background:bool -> b0_dir:Fpath.t ->
     brzo_file:Fpath.t option -> cache_dir:Fpath.t -> cwd:Fpath.t ->
     domain_name:string option -> domain_confs:domain list ->
     hash_fun:(module B0_hash.T) -> jobs:int -> log_file:Fpath.t ->
     no_pager:bool -> outcome_mode:outcome_mode ->
     output_outcome_path:bool -> pdf_viewer:Cmd.t option -> root:Fpath.t ->
-    srcs_i:Fpath.Set.t -> srcs_x:Fpath.Set.t -> fmt_styler:Fmt.styler ->
-    web_browser:Cmd.t option -> unit -> t
+    srcs_i:Fpath.Set.t -> srcs_x:Fpath.Set.t -> web_browser:Cmd.t option ->
+    unit -> t
   (** [v] constructs a configuration with given attributes. See the
       accessors for semantics. *)
 
@@ -359,9 +359,6 @@ module Conf : sig
   val srcs : t -> (B0_file_exts.map, string) result
   (** [srcs c] are the absolute source files path in configuration [c]
       sorted by file extension. *)
-
-  val fmt_styler : t -> Fmt.styler
-  (** [fmt_sytler c] is the formatting styler. *)
 
   val web_browser : t -> Cmd.t option
   (** [web_browser] is the WWW browser command to use. *)

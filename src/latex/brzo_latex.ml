@@ -51,7 +51,7 @@ module Conf = struct
       ~absent:None
       ~conf:Sexpq.(some (atomic Brzo.Sexp.fpath))
       ~arg:Cmdliner.Arg.(opt (some ~none:"guessed"
-                                (some B0_std_cli.fpath)) None)
+                                (some B0_std_cli.filepath)) None)
 
   let get_conf curl doi_resolver main sexp =
     Result.bind (Brzo.Conf.Bit.get curl_c curl sexp) @@ fun curl ->
