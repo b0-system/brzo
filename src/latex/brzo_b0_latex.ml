@@ -39,7 +39,7 @@ module Fls = struct
       | Ok p -> p
       | Error e -> Fmt.failwith_line i " Cannot parse path: %s" e
     in
-    let parse_line i l = match String.cut ~sep:" " l with
+    let parse_line i l = match String.split_first ~sep:" " l with
     | None -> Fmt.failwith_line i " Cannot parse line: %S" l
     | Some ("INPUT", p) -> `Input (parse_path i p)
     | Some ("OUTPUT", p) -> `Output (parse_path i p)

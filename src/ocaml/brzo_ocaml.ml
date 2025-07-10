@@ -472,7 +472,7 @@ let write_top_cmd
 let run_top_cmd m c top_cmd =
   Fut.return @@ fun () ->
   Result.bind (Os.File.read top_cmd) @@ fun contents ->
-  match String.split ~sep:"\n" contents with
+  match String.split_all ~sep:"\n" contents with
   | [] -> Fmt.error "%a: no command could be parsed" Fpath.pp_quoted top_cmd
   | cmd :: args ->
       let aargs = Brzo.Conf.action_args c in

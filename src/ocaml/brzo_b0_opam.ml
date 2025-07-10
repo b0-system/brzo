@@ -50,7 +50,7 @@ type pkg = string * string option
 let pkg_list ?switch:s () =
   let parse_pkg n acc s =
     if s = "" then acc else
-    match String.cut ~sep:" " s with
+    match String.split_first ~sep:" " s with
     | None -> Fmt.failwith_line n " Cannot parse package from %S" s
     | Some (pkg, version) ->
         let pkg = match String.trim version with
