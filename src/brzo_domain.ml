@@ -63,14 +63,13 @@ let action_mode c domain m () =
 let conf_mode (type c) c (module D : T with type Conf.t = c) =
   Log.if_error' ~use:Brzo.Exit.some_error @@
   let outcome_name, dc = Option.get (Brzo.Conf.domain_conf c (module D)) in
-  Result.bind (B0_pager.find ~don't:(Brzo.Conf.no_pager c) ()) @@ fun pager ->
+  let no_pager = Brzo.Conf.no_pager c in
+  Result.bind (B0_pager.find ~no_pager ()) @@ fun pager ->
   Result.bind (B0_pager.page_stdout pager) @@ fun () ->
-  Log.stdout begin fun m ->
-    m "@[<v>%a domain@,%a@,%a@,@,%a@]"
-      Fmt.code D.doc_name
-      (Fmt.field "outcome" Fun.id Fmt.string) outcome_name
-      D.Conf.pp dc Brzo.Conf.pp_show c
-  end;
+  Fmt.pr "@[<v>%a domain@,%a@,%a@,@,%a@]"
+    Fmt.code D.doc_name
+    (Fmt.field "outcome" Fun.id Fmt.string) outcome_name
+    D.Conf.pp dc Brzo.Conf.pp_with_header c;
   Ok Brzo.Exit.ok
 
 let path_mode c domain m () =

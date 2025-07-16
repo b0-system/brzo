@@ -15,11 +15,11 @@ open Cmdliner
 open Cmdliner.Term.Syntax
 
 let cmd =
-  let doc = "Show root directory" in
+  let doc = "Output root directory" in
   let exits = Brzo.Exit.Info.base_cmd in
   let man = [
     `S Manpage.s_description;
-    `P "The $(cmd) command shows the brzo root directory.";
+    `P "$(cmd) outputs the brzo root directory.";
     Brzo.Cli.man_see_manual; ]
   in
   Cmd.make (Cmd.info "root" ~doc ~exits ~man) @@

@@ -50,9 +50,9 @@ To understand which root, source files and domain [brzo] determines, the
 following commands can be used:
 
 {v
-brzo root      # show root directory
-brzo sources   # show source files considered
-brzo domain    # show selected domain
+brzo root      # output root directory
+brzo sources   # output source files considered
+brzo domain    # output selected domain
 v}
 
 If some directories or files get in the way during source file
@@ -85,8 +85,8 @@ is doing, use the [-v] option. Alternatively consult the build log
 after the build with the [log] command.
 
 {v
-brzo -v           # show build steps on stderr
-brzo log          # show build operations of the last build
+brzo -v           # output build steps on stderr
+brzo log          # output build operations of the last build
 brzo log --help   # see more options to explore the build
 v}
 
@@ -112,9 +112,9 @@ the outcome configuration, use the following invocations:
 {v
 brzo -b               # only build the outcome artefact
 brzo -r -- 'Quick!'   # only run the outcome action (no build)
-brzo --show-path      # path to the outcome artefact (built or not)
+brzo --output-path    # path to the outcome artefact (built or not)
 brzo -d               # delete the outcome build (but not the cache)
-brzo --conf           # show determined configuration
+brzo --conf           # output determined configuration
 v}
 
 {2:intro_doc Design documentation}
@@ -193,7 +193,7 @@ better to refrain from deleting the [_b0] directory – get rid of
 use the [brzo cache] command to manage it:
 
 {v
-brzo cache stats    # show information about the cache
+brzo cache stats    # output information about the cache
 brzo cache gc       # only keep keys used by the last build
 brzo cache trim     # trim to 50% of the current size
 brzo cache delete   # delete all cache keys (but not the build outcomes)

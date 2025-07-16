@@ -18,11 +18,11 @@ open Cmdliner
 open Cmdliner.Term.Syntax
 
 let cmd =
-  let doc = "Show selected default domain" in
+  let doc = "Output selected default domain" in
   let exits = Brzo.Exit.Info.undefined_domain :: Brzo.Exit.Info.base_cmd in
   let man = [
     `S Manpage.s_description;
-    `P "The $(cmd) command shows the default domain of a $(tool) \
+    `P "The $(cmd) command outputs the default domain of a $(tool) \
         invocation. The default domain is either automatically selected \
         according to the sources that are present in the BRZO root or \
         explicitely set by the BRZO file.";

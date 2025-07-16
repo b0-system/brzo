@@ -14,7 +14,7 @@ open B0_sexp
    2. We get/set key bindings as sequences of s-expression. This is
       syntactically compatible with the fact that set always splices. *)
 
-let show_sexp pp sexp =
+let output_sexp pp sexp =
   let s = Fmt.str "@[%a@]" pp sexp in
   let s = if s <> "" && s.[String.length s - 1] <> '\n' then s ^ "\n" else s in
   if Log.level () > Log.Quiet then output_string stdout s
@@ -48,7 +48,7 @@ let get_sexp_of_file file k =
 let update_file ~dry_run file sexp k =
   Log.if_error' ~use:Brzo.Exit.some_error @@
   match dry_run with
-  | true -> k (show_sexp Sexp.pp_seq_layout sexp)
+  | true -> k (output_sexp Sexp.pp_seq_layout sexp)
   | false ->
       let data = Fmt.str "@[%a@]" Sexp.pp_seq_layout sexp in
       Result.bind (Os.File.write ~force:true ~make_path:true file data) k
@@ -83,7 +83,7 @@ let get ~conf ~spath =
   get_brzo_file ~conf @@ fun file ->
   get_sexp_of_file file @@ fun sexp ->
   match spath with
-  | None -> show_sexp Sexp.pp_seq_layout (fst sexp); Ok Brzo.Exit.ok
+  | None -> output_sexp Sexp.pp_seq_layout (fst sexp); Ok Brzo.Exit.ok
   | Some spath ->
       get_spath spath @@ fun path ->
       sexp_query (Sexpq.path path Sexpq.sexp) sexp @@ fun r ->
@@ -92,7 +92,7 @@ let get ~conf ~spath =
       | `L (l, _) when is_key path -> l
       | sexp -> [sexp]
       in
-      show_sexp Fmt.(list ~sep:sp Sexp.pp) sexp;
+      output_sexp Fmt.(list ~sep:sp Sexp.pp) sexp;
       Ok Brzo.Exit.ok
 
 let path ~conf =
@@ -118,7 +118,8 @@ open Cmdliner
 open Cmdliner.Term.Syntax
 
 let dry_run =
-  let doc = "Do not edit the BRZO file in place but show the result on stdout."
+  let doc =
+    "Do not edit the BRZO file in place but output the result on stdout."
   in
   Arg.(value & flag & info ["t"; "dry-run"] ~doc)
 

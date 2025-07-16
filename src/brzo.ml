@@ -61,9 +61,10 @@ module Memo = struct
   let create ~hash_fun ~cwd ~cache_dir ~trash_dir ~jobs =
     let feedback =
       let op_howto ppf o = Fmt.pf ppf "brzo log --id %d" (B0_zero.Op.id o) in
-      let show_op = Log.Info and show_ui = Log.Error and level = Log.level () in
-      B0_cli.Memo.pp_leveled_feedback ~op_howto ~show_op ~show_ui ~level
-        Fmt.stderr
+      let output_op_level = Log.Info and output_ui_level = Log.Error in
+      let level = Log.level () in
+      B0_memo_cli.pp_leveled_feedback
+        ~op_howto ~output_op_level ~output_ui_level ~level Fmt.stderr
     in
     B0_memo.make ~hash_fun ~cwd ~cache_dir ~trash_dir ~jobs ~feedback ()
 end
@@ -291,7 +292,7 @@ module Conf = struct
       ~outcome_mode ~output_outcome_path ~pdf_viewer ~root ~srcs_i ~srcs_x
       ~web_browser ()
     =
-    let trash_dir = Fpath.(b0_dir / B0_cli.Memo.trash_dir_name) in
+    let trash_dir = Fpath.(b0_dir / B0_memo_cli.trash_dirname) in
     let srcs = lazy (collect_srcs ~srcs_i ~srcs_x) in
     let memo = lazy (Memo.create ~hash_fun ~cwd ~cache_dir ~trash_dir ~jobs) in
     { action_args; background; b0_dir; brzo_file; cache_dir; cwd; domain_name;
@@ -353,7 +354,7 @@ module Conf = struct
         Fmt.field "srcs-x" srcs_x (Fmt.vbox Fpath.(Set.pp pp_quoted));
         Fmt.field "web-browser" web_browser (pp_auto Cmd.pp); ]
 
-  let pp_show ppf c = Fmt.pf ppf "@[<v>%a@,%a@]" Fmt.code "Common" pp c
+  let pp_with_header ppf c = Fmt.pf ppf "@[<v>%a@,%a@]" Fmt.code "Common" pp c
 end
 
 (* Conf setup handles cli and brzo file setup *)
@@ -499,7 +500,7 @@ module Conf_setup = struct
     let modes =
       String.Map.of_list
         [ "action", `Action; "build", `Build; "conf", `Conf; "delete", `Delete;
-          "normal", `Normal; "show-path", `Path; ]
+          "normal", `Normal; "output-path", `Path; ]
     in
     let mode = Sexpq.(atomic (enum_map ~kind modes)) in
     Sexpq.key outcome_mode_key ~absent:`Normal mode
@@ -533,7 +534,7 @@ module Conf_setup = struct
   let common_keys = [domain_key; outcome_mode_key; srcs_i_key; srcs_x_key]
 
   let get_log_file ~cwd ~b0_dir ~log_file = match log_file with
-  | None -> Fpath.(b0_dir / Conf.brzo_dir_name / B0_cli.Memo.log_file_name)
+  | None -> Fpath.(b0_dir / Conf.brzo_dir_name / B0_memo_cli.Log.filename)
   | Some p -> Fpath.(cwd // p)
 
   let with_cli
@@ -557,11 +558,11 @@ module Conf_setup = struct
     in
     let* outcome_mode = get_outcome_mode ~outcome_mode sexp in
     let* srcs_i, srcs_x = get_srcs_ix ~root ~srcs_i ~srcs_x sexp in
-    let b0_dir = B0_cli.Memo.get_b0_dir ~cwd ~root ~b0_dir in
-    let cache_dir = B0_cli.Memo.get_cache_dir ~cwd ~b0_dir ~cache_dir in
+    let b0_dir = B0_cli.get_b0_dir ~cwd ~root ~b0_dir in
+    let cache_dir = B0_cli.get_cache_dir ~cwd ~b0_dir ~cache_dir in
     let log_file = get_log_file ~cwd ~b0_dir ~log_file in
-    let hash_fun = B0_cli.Memo.get_hash_fun ~hash_fun in
-    let jobs = B0_cli.Memo.get_jobs ~jobs in
+    let hash_fun = B0_memo_cli.Hash.get_hash_fun ~hash_fun in
+    let jobs = B0_memo_cli.get_jobs ~jobs in
     Ok (Conf.make
           ~action_args ~background ~b0_dir ~brzo_file ~cache_dir ~cwd
           ~domain_name ~domain_confs ~hash_fun ~jobs ~log_file
@@ -621,11 +622,12 @@ module Cli = struct
     let modes =
       [ m `Action ["r"; "run-action"] "Only perform the outcome action.";
         m `Build ["b"; "build"] "Only build the outcome artefact.";
-        m `Conf ["conf"] "Only show the configuration.";
+        m `Conf ["conf"] "Only output the configuration.";
         m `Delete ["d"; "delete"] "Delete the outcome build.";
         m `Normal ["a"; "normal"]
           "Build outcome and perform the action (default).";
-        m `Path ["show-path"] "Only show the path to the outcome artefact." ]
+        m `Path ["output-path"]
+          "Only output the path to the outcome artefact." ]
     in
     Arg.(value & vflag None modes)
 
@@ -651,8 +653,11 @@ module Cli = struct
 
   let log_file =
     let env = Cmd.Env.info "BRZO_LOG_FILE" in
-    let doc_none = "$(b,.log) in $(b,brzo) directory of b0 directory" in
-    B0_cli.Memo.log_file ~docs ~doc_none ~env ()
+    let doc_absent =
+      Fmt.str "$(b,%s) in $(b,brzo) directory of b0 directory"
+        B0_memo_cli.Log.filename
+    in
+    B0_memo_cli.Log.file ~docs ~doc_absent ~env ()
 
   let srcs_i =
     let doc =
@@ -706,24 +711,19 @@ module Cli = struct
     Term.term_result' @@
     let+ () = B0_std_cli.set_no_color ()
     and+ () = B0_std_cli.set_log_level ()
-    and+ action_args = action_args domain
-    and+ b0_dir = B0_cli.Memo.b0_dir ()
+    and+ action_args = action_args domain and+ b0_dir = B0_cli.b0_dir ()
     and+ background = B0_web_browser.background ~docs ()
-    and+ brzo_file
-    and+ cache_dir = B0_cli.Memo.cache_dir ()
-    and+ cwd
+    and+ brzo_file and+ cache_dir = B0_memo_cli.File_cache.dir () and+ cwd
     and+ hash_fun =
-      B0_cli.Memo.hash_fun ~docs ~env:(Cmd.Env.info "BRZO_HASH_FUN") ()
-    and+ jobs = B0_cli.Memo.jobs ~docs ~env:(Cmd.Env.info "BRZO_JOBS") ()
-    and+ log_file
-    and+ no_pager = B0_pager.don't ~docs ()
+      B0_memo_cli.Hash.hash_fun ~env:(Cmd.Env.info "BRZO_HASH_FUN") ()
+    and+ jobs =
+      B0_memo_cli.jobs ~env:(Cmd.Env.info "BRZO_JOBS") ()
+    and+ log_file and+ no_pager = B0_pager.no_pager ()
     and+ outcome_name = outcome_name domain
     and+ outcome_mode = outcome_mode domain
     and+ output_outcome_path = output_outcome_path domain
     and+ pdf_viewer = B0_pdf_viewer.pdf_viewer ~docs ()
-    and+ root
-    and+ srcs_i
-    and+ srcs_x
+    and+ root and+ srcs_i and+ srcs_x
     and+ web_browser = B0_web_browser.browser ~opts:["browser"] ~docs ()
     and+ domain = domain_cli_conf domain in
     Conf_setup.with_cli

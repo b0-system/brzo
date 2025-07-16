@@ -40,7 +40,8 @@ let default ~conf =
   Log.if_error ~use:Brzo.Exit.undefined_domain @@
   match Brzo_domain.of_conf conf Brzo_domain_list.v with
   | Error _ when Brzo.Conf.outcome_mode conf = `Conf ->
-      Log.stdout (fun m -> m "%a" Brzo.Conf.pp_show conf); Ok Brzo.Exit.ok
+      Fmt.pr "%a" Brzo.Conf.pp_with_header conf;
+      Ok Brzo.Exit.ok
   | r -> Result.bind r @@ fun domain -> Ok (Brzo_domain.run conf domain)
 
 (* Command line interface *)

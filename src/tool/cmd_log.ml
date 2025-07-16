@@ -6,15 +6,17 @@
 open B0_std
 open Result.Syntax
 
-let log ~conf ~log_format ~output_details ~op_query =
+let log ~conf ~format ~output_details ~query =
   Log.if_error ~use:Brzo.Exit.some_error @@
-  let don't = Brzo.Conf.no_pager conf || log_format = `Trace_event in
+  let no_pager = Brzo.Conf.no_pager conf || format = `Trace_event in
   let log_file = Brzo.Conf.log_file conf in
-  let* pager = B0_pager.find ~don't () in
+  let* pager = B0_pager.find ~no_pager () in
   let* () = B0_pager.page_stdout pager in
-  let* l = B0_memo_log.read log_file in
-  B0_cli.Memo.Log.out
-    Fmt.stdout log_format output_details op_query ~path:log_file l;
+  let* log = B0_memo_log.read log_file in
+  let pp =
+    B0_memo_cli.Log.pp ~format ~output_details ~query ~path:log_file ()
+  in
+  Fmt.pr "@[<v>%a@]@?" pp log;
   Ok Brzo.Exit.ok
 
 (* Command line interface *)
@@ -23,21 +25,19 @@ open Cmdliner
 open Cmdliner.Term.Syntax
 
 let cmd =
-  let doc = "Show build log" in
+  let doc = "Output build log" in
   let exits = Brzo.Exit.Info.base_cmd in
-  let envs = B0_pager.Env.infos in
   let man = [
     `S Manpage.s_description;
-    `P "The $(cmd) command shows build information and operations in \
-        various formats.";
+    `P "$(cmd) outputs build information and operations in various formats.";
     `S B0_std_cli.s_output_details_options;
-    `S B0_cli.Op.s_selection_options;
-    `Blocks B0_cli.Op.query_man;
+    `S B0_memo_cli.Op.s_selection_options;
+    `Blocks B0_memo_cli.Op.query_man;
     Brzo.Cli.man_see_manual; ]
   in
-  Cmd.make (Cmd.info "log" ~doc ~exits ~envs ~man) @@
+  Cmd.make (Cmd.info "log" ~doc ~exits ~man) @@
   let+ conf = Brzo_tie_conf.auto_cwd_root_and_no_brzo_file
-  and+ log_format = B0_cli.Memo.Log.format_cli ()
+  and+ format = B0_memo_cli.Log.format_cli ()
   and+ output_details = B0_std_cli.output_details ()
-  and+ op_query = B0_cli.Op.query_cli () in
-  log ~conf ~log_format ~output_details ~op_query
+  and+ query = B0_memo_cli.Op.query_cli () in
+  log ~conf ~format ~output_details ~query

@@ -20,7 +20,7 @@ let sources ~conf ~doms =
   Log.if_error ~use:Brzo.Exit.undefined_domain @@
   let* exts = exts_of_doms doms in
   Log.if_error' ~use:Brzo.Exit.some_error @@
-  let* pager = B0_pager.find ~don't:(Brzo.Conf.no_pager conf) () in
+  let* pager = B0_pager.find ~no_pager:(Brzo.Conf.no_pager conf) () in
   let* () = B0_pager.page_stdout pager in
   let* src_by_exts = Brzo.Conf.srcs conf in
   let srcs =
@@ -43,16 +43,15 @@ open Cmdliner
 open Cmdliner.Term.Syntax
 
 let cmd =
-  let doc = "Show source files" in
+  let doc = "List source files" in
   let exits = Brzo.Exit.Info.undefined_domain :: Brzo.Exit.Info.base_cmd in
-  let envs = B0_pager.Env.infos in
   let man = [
     `S Manpage.s_description;
-    `P "The $(cmd) command lists the source files considered by a $(tool) \
+    `P "$(cmd) outputs lists the source files considered by a $(tool) \
         invocation.";
     Brzo.Cli.man_see_manual; ]
   in
-  Cmd.v (Cmd.info "sources" ~doc ~exits ~envs ~man) @@
+  Cmd.make (Cmd.info "sources" ~doc ~exits ~man) @@
   let+ conf = Brzo_tie_conf.use_brzo_file
   and+ doms =
     let doc =

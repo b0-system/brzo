@@ -371,8 +371,8 @@ module Conf : sig
   (** [pp] formats configurations. Does not format domain specific
       configuration. *)
 
-  val pp_show : t Fmt.t
-  (** [pp_show] formats a header and the configuration with {!pp}.  *)
+  val pp_with_header : t Fmt.t
+  (** [pp_with_header] formats a header and the configuration with {!pp}.  *)
 end
 
 (** Cli interaction. *)
