@@ -42,14 +42,17 @@ depends: [
   "topkg" {build & >= "1.0.3"}
   "cmdliner" {>= "1.3.0"}
 ]
-build: ["ocaml" "pkg/pkg.ml" "build" "--dev-pkg" "%{dev}%"]
-install: [
-  "cmdliner"
-  "install"
-  "tool-support"
-  "_build/src/tool/brzo_main.native:brzo" {ocaml:native}
-  "_build/src/tool/brzo_main.byte:brzo" {!ocaml:native}
-  "%{prefix}%"
+build: [
+  ["ocaml" "pkg/pkg.ml" "build" "--dev-pkg" "%{dev}%"]
+  [
+    "cmdliner"
+    "install"
+    "tool-support"
+    "--update-opam-install=%{_:name}%.install"
+    "_build/src/tool/brzo_main.native:brzo" {ocaml:native}
+    "_build/src/tool/brzo_main.byte:brzo" {!ocaml:native}
+    "_build/cmdliner-install"
+  ]
 ]
 dev-repo: "git+https://erratique.ch/repos/brzo.git"
 x-maintenance-intent: ["(latest)"]

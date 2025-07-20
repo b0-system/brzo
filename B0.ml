@@ -56,12 +56,12 @@ let default =
     |> ~~ B0_meta.description_tags
       ["build"; "dev"; "org:erratique"; "org:b0-system"]
     |> ~~ B0_opam.build
-      {|[["ocaml" "pkg/pkg.ml" "build" "--dev-pkg" "%{dev}%"]]|}
-    |> ~~ B0_opam.install
-      {|[[ "cmdliner" "install" "tool-support"
+      {|[["ocaml" "pkg/pkg.ml" "build" "--dev-pkg" "%{dev}%"]
+         [ "cmdliner" "install" "tool-support"
+           "--update-opam-install=%{_:name}%.install"
            "_build/src/tool/brzo_main.native:brzo" {ocaml:native}
            "_build/src/tool/brzo_main.byte:brzo" {!ocaml:native}
-           "%{prefix}%"]]|}
+           "_build/cmdliner-install"]]|}
     |> ~~ B0_opam.depends [
       "ocaml", {|>= "4.14.0"|};
       "ocamlfind", {|build|};
