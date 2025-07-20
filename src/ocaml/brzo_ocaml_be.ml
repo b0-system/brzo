@@ -52,7 +52,7 @@ let resolution_cmis_dep_objs r ~code cmis modrefs =
   let* cmis = resolve_cmis_modrefs r cmis modrefs in
   let add_dep_objs acc cmi =
     let acc = Brzo_ocaml_cmi.file cmi :: acc in
-    if code = `Byte then acc else
+    if code = B0_ocaml.Code.Byte then acc else
     match Mod_resolver.find_cmi_side_cmx_file r cmi with
     | None -> acc | Some cmx -> cmx :: acc
   in
@@ -116,7 +116,7 @@ let resolve_impl_deps r ~code ~local_mods ~in_dir deps =
 let resolve_intf_deps r ~local_mods ~in_dir deps =
   (* XXX maybe we should really try to distinguish intf/impl paths.
      We are cheating for now. *)
-  resolve_impl_deps r ~code:`Byte ~local_mods ~in_dir deps
+  resolve_impl_deps r ~code:B0_ocaml.Code.Byte ~local_mods ~in_dir deps
 
 (* Handling ambiguous deps *)
 

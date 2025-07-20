@@ -57,8 +57,9 @@ let ocaml_conf m dc ~build_dir =
   B0_ocaml.Conf.read m o
 
 let comp_of_code = function
-| `Native -> B0_ocaml.Tool.ocamlopt
-| `Byte -> B0_ocaml.Tool.ocamlc
+| B0_ocaml.Code.Native -> B0_ocaml.Tool.ocamlopt
+| B0_ocaml.Code.Byte -> B0_ocaml.Tool.ocamlc
+| B0_ocaml.Code.Wasm -> assert false
 
 (* Builder *)
 
@@ -204,7 +205,9 @@ let compile_impls b ~code ~opts ~build_dir ~local_mods =
   String.Map.fold compile local_mods []
 
 let local_mods ?(more_srcs = []) ~opts ~build_dir ~mli_only b =
-  let maybe_ml = if mli_only then String.Set.empty else B0_file_exts.(ext ".ml") in
+  let maybe_ml =
+    if mli_only then String.Set.empty else B0_file_exts.(ext ".ml")
+  in
   let src_exts = B0_file_exts.(ext ".mli" + maybe_ml) in
   let srcs = B0_file_exts.find_files src_exts b.srcs in
   let o = Fpath.(b.build_dir / "brzo.ocaml.compdep") in
@@ -225,7 +228,11 @@ let compile_srcs ?more_srcs b ~code ~opts ~build_dir =
 let find_link_deps b ~code ~in_dir cobjs =
   let o = Fpath.(in_dir / "brzo.ocaml.linkdep") in
   B0_ocaml.Cobj.write b.m ~cobjs ~o;
-  let ext = match code with `Byte -> ".cma" | `Native -> ".cmxa" in
+  let ext = match code with
+  | B0_ocaml.Code.Byte -> ".cma"
+  | B0_ocaml.Code.Native -> ".cmxa"
+  | B0_ocaml.Code.Wasm -> assert false
+  in
   let* cobjs, ext_deps =
     Fut.map B0_ocaml.Cobj.sort (B0_ocaml.Cobj.read b.m o)
   in
@@ -321,7 +328,8 @@ let build_node_exe b ~artefact =
     List.rev (ocaml_js :: (List.fold_left copy [] js_files))
   in
   let args = Cmd.(arg "--source-map-inline") in
-  ignore (build_exe b ~opts:no_check_prims ~code:`Byte ~exe:byte_exe);
+  let code = B0_ocaml.Code.Byte in
+  ignore (build_exe b ~opts:no_check_prims ~code ~exe:byte_exe);
   Js_of_ocaml.compile b.m ~byte_exe ~args ~o:ocaml_js;
   Js_of_ocaml.link b.m ~jss ~args ~o:artefact;
   Fut.return ()
@@ -351,7 +359,8 @@ let build_html_web b ~toplevel_css ~js_exe =
 let build_html_exe b ~artefact =
   let byte_exe = Fpath.(b.build_dir / "a.out") in
   let args = Cmd.(arg "--source-map-inline" % "--extern-fs") in
-  ignore (build_exe b ~opts:no_check_prims ~code:`Byte ~exe:byte_exe);
+  let code = B0_ocaml.Code.Byte in
+  ignore (build_exe b ~opts:no_check_prims ~code ~exe:byte_exe);
   Js_of_ocaml.compile b.m ~args ~byte_exe ~o:Fpath.(b.build_dir / js_exe);
   build_html_web b ~toplevel_css:false ~js_exe;
   Fut.return ()
@@ -393,8 +402,8 @@ let exec_build m c dc ~build_dir ~artefact ~srcs =
   let* b = builder m c dc ~build_dir ~srcs in
   let* target = exec_target m dc in
   match target with
-  | `Byte -> build_exe b ~code:`Byte ~exe:artefact
-  | `Native -> build_exe b ~code:`Native ~exe:artefact
+  | `Byte -> build_exe b ~code:B0_ocaml.Code.Byte ~exe:artefact
+  | `Native -> build_exe b ~code:B0_ocaml.Code.Native ~exe:artefact
   | `Html -> build_html_exe b ~artefact
   | `Node -> build_node_exe b ~artefact
 
@@ -452,13 +461,14 @@ let drop_top_libs r ~code ~top cobjs =
     Fut.return (List.filter (not_in_libs libs) objs)
   in
   match code with
-  | `Native ->
+  | B0_ocaml.Code.Native ->
       drop_libs_for_modname r ~ext:".cmxa"
         (B0_ocaml.Modname.v "Opttoploop") cobjs
-  | `Byte when top = "utop" ->
+  | B0_ocaml.Code.Byte when top = "utop" ->
       drop_libs_for_modname r ~ext:".cma" (B0_ocaml.Modname.v "UTop") cobjs
-  | `Byte ->
+  | B0_ocaml.Code.Byte ->
       drop_libs_for_modname r ~ext:".cma" (B0_ocaml.Modname.v "Toploop") cobjs
+  | B0_ocaml.Code.Wasm -> assert false
 
 let write_top_cmd
     ?args:(al = Cmd.empty) m ~top ~build_dir ~incs ~libs ~archive ~artefact
@@ -489,8 +499,9 @@ let cobjs_incs objs =
 let build_top b ~code ~top ~artefact =
   let in_dir = b.build_dir and oname = "brzo_top" in
   let archive = match code with
-  | `Byte -> Fpath.(in_dir / Fmt.str "%s.cma" oname)
-  | `Native -> Fpath.(in_dir / Fmt.str "%s.cmxs" oname)
+  | B0_ocaml.Code.Byte -> Fpath.(in_dir / Fmt.str "%s.cma" oname)
+  | B0_ocaml.Code.Native -> Fpath.(in_dir / Fmt.str "%s.cmxs" oname)
+  | B0_ocaml.Code.Wasm -> assert false
   in
   let opts = Cmd.arg "-g" in
   let* c_objs, cobjs = compile_srcs b ~code ~opts ~build_dir:in_dir in
@@ -507,21 +518,23 @@ let build_top b ~code ~top ~artefact =
   B0_ocaml.Archive.code
     b.m ~conf:b.ocaml_conf ~code ~opts ~has_cstubs ~cobjs ~odir:in_dir ~oname;
   begin match code with
-  | `Byte -> ()
-  | `Native ->
+  | B0_ocaml.Code.Byte -> ()
+  | B0_ocaml.Code.Native ->
       let cmxa = Fpath.(in_dir / Fmt.str "%s.cmxa" oname) in
       ignore @@ B0_ocaml.Archive.native_dynlink
         b.m ~conf:b.ocaml_conf ~opts ~has_cstubs ~cmxa ~o:archive;
+  | B0_ocaml.Code.Wasm -> assert false
   end;
   let* ext_cobjs = drop_top_libs b.r ~code ~top ext_cobjs in
   let args, libs = match code with
-  | `Byte -> Cmd.empty, List.map B0_ocaml.Cobj.file ext_cobjs
-  | `Native ->
+  | B0_ocaml.Code.Byte -> Cmd.empty, List.map B0_ocaml.Cobj.file ext_cobjs
+  | B0_ocaml.Code.Native ->
       let cmxa_to_cmxs_file o =
         Fpath.set_ext ~multi:false ".cmxs" (B0_ocaml.Cobj.file o)
       in
       Cmd.(arg "-noinit"), (* most .ocamlinit will fail *)
       List.map cmxa_to_cmxs_file ext_cobjs
+  | B0_ocaml.Code.Wasm -> assert false
   in
   write_top_cmd
     b.m ~args ~top ~build_dir:b.build_dir ~incs ~libs ~archive ~artefact;
@@ -548,7 +561,7 @@ let build_html_top b ~top ~artefact =
     B0_memo.write m ~stamp:Js_of_ocaml.toplevel_ui_src o @@
     fun () -> Ok (Js_of_ocaml.toplevel_ui_src)
   in
-  let in_dir = b.build_dir and code = `Byte in
+  let in_dir = b.build_dir and code = B0_ocaml.Code.Byte in
   let byte_exe = Fpath.(in_dir / "a.out") in
   let mod_names = Fpath.(in_dir / "top_mod_names") in
   let toplevel_ui_ml = Fpath.(b.build_dir / "brzo_jsoo_toplevel_ui.ml") in
@@ -594,8 +607,8 @@ let top_build m c dc ~build_dir ~artefact ~srcs =
   let* b = builder m c dc ~build_dir ~srcs in
   let* target = top_target m dc in
   match target with
-  | `Byte -> build_top b ~code:`Byte ~top:"ocaml" ~artefact
-  | `Native -> build_top b ~code:`Native ~top:"ocamlnat" ~artefact
+  | `Byte -> build_top b ~code:B0_ocaml.Code.Byte ~top:"ocaml" ~artefact
+  | `Native -> build_top b ~code:B0_ocaml.Code.Native ~top:"ocamlnat" ~artefact
   | `Html -> build_html_top b ~top:"jsoo" ~artefact
   | `Node -> fail_unsupported_target m ~outcome:"top" ~target:"node"
 
@@ -618,7 +631,8 @@ let top =
 let utop_build m c dc ~build_dir ~artefact ~srcs =
   let* b = builder m c dc ~build_dir ~srcs in
   match Brzo_ocaml_conf.target dc with
-  | None | Some `Byte -> build_top b ~code:`Byte ~top:"utop" ~artefact
+  | None | Some `Byte ->
+      build_top b ~code:B0_ocaml.Code.Byte ~top:"utop" ~artefact
   | Some `Native -> fail_unsupported_target m ~outcome:"utop" ~target:"native"
   | Some `Html -> fail_unsupported_target m ~outcome:"utop" ~target:"html"
   | Some `Node -> fail_unsupported_target m ~outcome:"utop" ~target:"node"
@@ -824,7 +838,7 @@ let build_doc m c dc ~build_dir ~artefact ~srcs =
   let* () = B0_memo.mkdir m in_dir in
   let opts = Cmd.arg "-g" in
   let* local_mods = local_mods b ~opts ~build_dir:in_dir ~mli_only:true in
-  let comp = comp_of_code `Native in (* FIXME do something smart *)
+  let comp = comp_of_code B0_ocaml.Code.Native in (* FIXME do something smart *)
   let cmis = compile_intfs b ~comp ~opts ~local_mods ~build_dir:in_dir in
   write_merlin_file b;
   let* () = B0_memo.mkdir m html_dir in
