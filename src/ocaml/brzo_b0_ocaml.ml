@@ -58,7 +58,7 @@ module Mod_resolver = struct
   let deps r = r.deps
   let index r = r.index
   let dep_of_file r f =
-    let dir_dep f dir = match Fpath.strip_prefix dir f with
+    let dir_dep f dir = match Fpath.drop_strict_prefix ~prefix:dir f with
     | None -> None
     | Some rel -> Some (Fpath.strip_trailing_dir_sep @@ Fpath.parent rel)
     in
@@ -67,7 +67,9 @@ module Mod_resolver = struct
   let dep_dirs_deps r =
     let find_deps_in_root_dir r root_dir =
       let parent = Fpath.parent root_dir in
-      let rem_parent f = Option.get (Fpath.strip_prefix parent f) in
+      let rem_parent f =
+        Option.get (Fpath.drop_strict_prefix ~prefix:parent f)
+      in
       let rec loop acc = function
       | [] -> List.rev_map Fpath.strip_trailing_dir_sep acc
       | d :: ds ->

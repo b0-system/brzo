@@ -343,7 +343,9 @@ let build_html_web b ~toplevel_css ~js_exe =
   | true -> ()
   | false ->
       let rel_uris srcs =
-        let add_rel acc f = Option.get (Fpath.strip_prefix src_root f) :: acc in
+        let add_rel acc f =
+          Option.get (Fpath.drop_strict_prefix ~prefix:src_root f) :: acc
+        in
         let rels = List.fold_left add_rel [] srcs in
         List.rev_map Fpath.to_url_path rels
       in
