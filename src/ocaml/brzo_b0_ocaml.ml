@@ -44,7 +44,7 @@ module Mod_resolver = struct
     let m = B0_memo.with_mark m "ocaml.mod_resolver" in
     let index =
       Log.time (fun _ msg -> msg "ocaml.mod_resolver file index") @@ fun () ->
-      B0_findex.of_dirs dep_dirs
+      B0_findex.of_dirs ~dotfiles:false ~follow_symlinks:true dep_dirs
       |> B0_memo.fail_if_error m
     in
     let restrictions, miss = restrictions m index dep_dirs deps in
@@ -58,18 +58,20 @@ module Mod_resolver = struct
   let deps r = r.deps
   let index r = r.index
   let dep_of_file r f =
-    let dir_dep f dir = match Fpath.strip_prefix dir f with
+    let dir_dep f dir = match Fpath.drop_strict_prefix ~prefix:dir f with
     | None -> None
-    | Some rel -> Some (Fpath.strip_trailing_dir_sep @@ Fpath.parent rel)
+    | Some rel -> Some (Fpath.drop_trailing_dir_sep @@ Fpath.parent rel)
     in
     List.find_map (dir_dep f) (dep_dirs r)
 
   let dep_dirs_deps r =
     let find_deps_in_root_dir r root_dir =
       let parent = Fpath.parent root_dir in
-      let rem_parent f = Option.get (Fpath.strip_prefix parent f) in
+      let rem_parent f =
+        Option.get (Fpath.drop_strict_prefix ~prefix:parent f)
+      in
       let rec loop acc = function
-      | [] -> List.rev_map Fpath.strip_trailing_dir_sep acc
+      | [] -> List.rev_map Fpath.drop_trailing_dir_sep acc
       | d :: ds ->
           let subs = B0_findex.dir_dirs r.index d in
           let deps = List.rev_map rem_parent subs in
@@ -168,7 +170,7 @@ module Mod_resolver = struct
         if ext = ".cmxa" then begin
           List.iter
             (fun o ->
-               B0_memo.ready_file r.m (Fpath.set_ext ~multi:false ".a" o)) cobjs
+               B0_memo.ready_file r.m (Fpath.with_ext ~multi:false ".a" o)) cobjs
         end;
         B0_ocaml.Cobj.write r.m ~cobjs ~o;
         let* cobjs = B0_ocaml.Cobj.read r.m o in

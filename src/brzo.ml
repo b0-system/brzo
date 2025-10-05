@@ -142,7 +142,7 @@ module Pre_domain = struct
 end
 
 module Sexp = struct
-  let pp_loc = Fmt.code' Sexp.pp_loc
+  let pp_loc = Fmt.code' B0_text.Textloc.pp
   let pp_red = Fmt.st' [`Bold; `Fg `Red]
   let pp_prefix ppf () = Fmt.pf ppf "%a: " (pp_red Fmt.string) "Error"
   let pp_read_error = Sexp.pp_error ~pp_loc ~pp_prefix ()
@@ -231,7 +231,7 @@ module Conf = struct
       Fpath.Set.mem file srcs_x
     in
     let add_file fname p (seen, by_ext as acc) =
-      let ext = Fpath.get_ext ~multi:false p in
+      let ext = Fpath.take_ext ~multi:false p in
       if not (String.Set.mem ext B0_file_exts.all) then acc else
       seen, (String.Map.add_to_list ext p by_ext)
     in
@@ -246,14 +246,15 @@ module Conf = struct
       | true -> add_file (Fpath.basename i) i acc
       | false ->
           if exclude (Fpath.basename i) i then acc else
-          let i = Fpath.strip_trailing_dir_sep i in
+          let i = Fpath.drop_trailing_dir_sep i in
           if Fpath.Set.mem i seen then acc else
           let acc = Fpath.Set.add i seen, by_ext in
           if not (Os.Dir.exists i |> Result.error_to_failure) then acc else
           let prune_dir _ dname dir (seen, _) =
             exclude dname dir || Fpath.Set.mem dir seen
           in
-          Os.Dir.fold ~dotfiles:true ~prune_dir ~recurse:true
+          let dotfiles = true and follow_symlinks = true and recurse = true in
+          Os.Dir.fold ~prune_dir ~dotfiles ~follow_symlinks ~recurse
             add i acc |> Result.error_to_failure
     in
     let srcs_i = Fpath.Set.elements srcs_i in

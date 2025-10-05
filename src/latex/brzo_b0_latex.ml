@@ -63,7 +63,7 @@ module Fls = struct
     try
       (* TODO if there's no muliline parse use fold directly *)
       let add_line _ acc l = l :: acc in
-      let rlines = String.fold_ascii_lines ~strip_newlines:true add_line [] s in
+      let rlines = String.fold_ascii_lines ~drop_newlines:true add_line [] s in
       loop 1 (Fpath.v "/") Fpath.Set.empty Fpath.Set.empty (List.rev rlines)
     with
     | Failure e -> Fpath.error file "%s" e
@@ -138,9 +138,9 @@ module Bibdoi = struct
   let sexp b = b.sexp
   let dois b = b.dois
 
-  let parse_doi a = match B0_url.scheme a with
+  let parse_doi a = match Net.Url.scheme a with
   | Some ("http" | "https") ->
-      begin match B0_url.path a with
+      begin match Net.Url.path a with
       | None -> Fmt.error "%s: could not parse DOI" a
       | Some doi -> Ok doi
       end

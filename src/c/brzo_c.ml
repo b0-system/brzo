@@ -115,7 +115,7 @@ let compile_srcs b ~in_dir =
   let rec loop os cunits hs = function
   | [] -> Fut.return os
   | c :: cs ->
-      let cname = Fpath.basename ~strip_exts:true c in
+      let cname = Fpath.basename ~drop_exts:true c in
       match String.Map.find cname cunits with
       | exception Not_found ->
           let o = compile_src b ~in_dir ~obj_ext ~deps:hs cname c in

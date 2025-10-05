@@ -40,7 +40,7 @@ let list m ?switch which () =
   let* r = run m ?switch "list" Cmd.(which % "--short") in
   let list = Result.bind r @@ fun s ->
     let add_pkg _ acc pkg = pkg :: acc in
-    Ok (List.rev (String.fold_ascii_lines ~strip_newlines:true add_pkg [] s))
+    Ok (List.rev (String.fold_ascii_lines ~drop_newlines:true add_pkg [] s))
   in
   let list = B0_memo.fail_if_error m list in
   Fut.return list
@@ -68,5 +68,5 @@ let pkg_list ?switch:s () =
          "--short" % "--normalise" % "--all")
   in
   Result.bind (Os.Cmd.run_out ~trim:true list) @@ fun s ->
-  try Ok (String.fold_ascii_lines ~strip_newlines:true parse_pkg [] s) with
+  try Ok (String.fold_ascii_lines ~drop_newlines:true parse_pkg [] s) with
   | Failure e -> Fpath.error Fpath.dash "%s" e

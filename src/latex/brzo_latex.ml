@@ -11,7 +11,7 @@ open Brzo_b0_latex
 module Conf = struct
   type t =
     { curl : Cmd.t;
-      doi_resolver : B0_url.t;
+      doi_resolver : Net.Url.t;
       main : Fpath.t option; }
 
   let curl c = c.curl
@@ -123,7 +123,7 @@ let find_main m c dc ~texs =
           | Some t -> Fut.return t
           | None ->
               let root_name =
-                Fpath.basename ~strip_exts:true (Brzo.Conf.root c)
+                Fpath.basename ~drop_exts:true (Brzo.Conf.root c)
               in
               match find_basename (Fmt.str "%s.tex" root_name) texs with
               | Some t -> Fut.return t
@@ -160,7 +160,7 @@ let exec_build m c dc ~build_dir ~artefact ~srcs =
     Cmd.(arg "-file-line-error" % "-halt-on-error" %
          "-interaction=nonstopmode" %
          "-output-directory" %% path build_dir %
-         "-jobname" % Fpath.basename ~strip_exts:true artefact %%
+         "-jobname" % Fpath.basename ~drop_exts:true artefact %%
          path main)
   in
   let reads =
@@ -313,14 +313,14 @@ let supported_srcs =
   List.fold_left add_exts String.Set.empty langs
 
 let latex_lang_setup src =
-  let ext = Fpath.get_ext ~multi:false src in
+  let ext = Fpath.take_ext ~multi:false src in
   let is_lang (exts, _) = String.Set.mem ext exts in
   match List.find is_lang langs with
   | exception Not_found -> ""
   | (_, setup) -> setup
 
 let src_listing ~src_root ppf src =
-  let file = Option.get (Fpath.strip_prefix src_root src) in
+  let file = Option.get (Fpath.drop_strict_prefix ~prefix:src_root src) in
   Fmt.pf ppf
     latex_src_chapter
     (Latex.escape (Fpath.to_string file))

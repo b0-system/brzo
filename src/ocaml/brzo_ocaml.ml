@@ -124,7 +124,7 @@ let compile_c_srcs b ~comp ~opts ~in_dir =
   let rec loop os cunits hs = function
   | [] -> List.rev os
   | c :: cs ->
-      let cname = Fpath.basename ~strip_exts:true c in
+      let cname = Fpath.basename ~drop_exts:true c in
       match String.Map.find cname cunits with
       | exception Not_found ->
           let o = Fpath.(in_dir / Fmt.str "%s%s" cname obj_ext) in
@@ -279,7 +279,7 @@ let drop_stdlib_and_adjust_ext_cobjs b cobjs =
   | [] -> rfiles
   | cobj :: cobjs ->
       match is_stdlib
-              (Fpath.basename ~strip_exts:true (B0_ocaml.Cobj.file cobj))
+              (Fpath.basename ~drop_exts:true (B0_ocaml.Cobj.file cobj))
       with
       | true -> loop b rfiles cobjs
       | false ->
@@ -287,7 +287,7 @@ let drop_stdlib_and_adjust_ext_cobjs b cobjs =
           | false -> loop b (B0_ocaml.Cobj.file cobj :: rfiles) cobjs
           | true ->
               let clib =
-                Fpath.set_ext ~multi:false lib_ext (B0_ocaml.Cobj.file cobj)
+                Fpath.with_ext ~multi:false lib_ext (B0_ocaml.Cobj.file cobj)
               in
               match Os.File.exists clib |> B0_memo.fail_if_error b.m with
               | false -> loop b (B0_ocaml.Cobj.file cobj :: rfiles) cobjs
@@ -343,7 +343,9 @@ let build_html_web b ~toplevel_css ~js_exe =
   | true -> ()
   | false ->
       let rel_uris srcs =
-        let add_rel acc f = Option.get (Fpath.strip_prefix src_root f) :: acc in
+        let add_rel acc f =
+          Option.get (Fpath.drop_strict_prefix ~prefix:src_root f) :: acc
+        in
         let rels = List.fold_left add_rel [] srcs in
         List.rev_map Fpath.to_url_path rels
       in
@@ -530,7 +532,7 @@ let build_top b ~code ~top ~artefact =
   | B0_ocaml.Code.Byte -> Cmd.empty, List.map B0_ocaml.Cobj.file ext_cobjs
   | B0_ocaml.Code.Native ->
       let cmxa_to_cmxs_file o =
-        Fpath.set_ext ~multi:false ".cmxs" (B0_ocaml.Cobj.file o)
+        Fpath.with_ext ~multi:false ".cmxs" (B0_ocaml.Cobj.file o)
       in
       Cmd.(arg "-noinit"), (* most .ocamlinit will fail *)
       List.map cmxa_to_cmxs_file ext_cobjs
@@ -658,11 +660,11 @@ let docs_dir = "_docs" (* Rendered .md files *)
 let doc_dir = "_doc-dir" (* pkg doc-dir directory *)
 
 let odoc_file_for_cobj b pkg cobj =
-  let odoc = Fmt.str "%s.odoc" (Fpath.basename ~strip_exts:true cobj) in
+  let odoc = Fmt.str "%s.odoc" (Fpath.basename ~drop_exts:true cobj) in
   Fpath.(b.build_dir / "odoc" / pkg / odoc)
 
 let odoc_file_for_mld b pkg mld = (* assume mld names are flat *)
-  let page = Fmt.str "page-%s.odoc" (Fpath.basename ~strip_exts:true mld) in
+  let page = Fmt.str "page-%s.odoc" (Fpath.basename ~drop_exts:true mld) in
   Fpath.(b.build_dir / "odoc" / pkg / page)
 
 let best_doc_cobj b cobj =
@@ -717,7 +719,7 @@ let index_mld_for_pkg b pkg_name mld_odocs odocs doc_htmls =
     | [], [] -> ""
     | mlds, md_htmls ->
         let mld_link mld =
-          let link = Fpath.basename ~strip_exts:true mld in
+          let link = Fpath.basename ~drop_exts:true mld in
           let text = String.subrange ~first:5 link in
           Fmt.str "{- {{!%s}%s}}" link (String.Ascii.capitalize text)
         in
@@ -810,7 +812,7 @@ let write_theme m theme ~html_dir = match theme with
     let to_dir = Fpath.(html_dir / B0_odoc.Theme.default_uri) in
     B0_odoc.Theme.write m t ~to_dir
 
-let pkg_name c = Fpath.basename ~strip_exts:true (Brzo.Conf.root c)
+let pkg_name c = Fpath.basename ~drop_exts:true (Brzo.Conf.root c)
 
 let md_to_html m ~src_root ~build_dir ~html_dir md =
   let generator = "brzo %%VERSION%% ocaml doc" in
