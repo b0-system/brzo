@@ -96,27 +96,27 @@ module Latex = struct
 end
 
 module Doi = struct
-  open B0_http
-
   let default_resolver = "https://doi.org"
 
   type t = string
   let pp = Fmt.string
 
   let response_success request response =
-    match Http.Response.status response with
-    | 200 -> Ok (Http.Response.body response)
+    match B0_http.Response.status response with
+    | 200 -> Ok (B0_http.Response.body response)
     | status ->
-        let method' = Http.method_to_string (Http.Request.method' request) in
-        let url = Http.Request.url request in
+        let method' =
+          B0_http.method_to_string (B0_http.Request.method' request)
+        in
+        let url = B0_http.Request.url request in
         Fmt.error "%s on %s: responded with %d" method' url status
 
   let doi_url ~resolver doi = Fmt.str "%s/%s" resolver doi
 
   let resolve_to_url ?(resolver = default_resolver) httpc doi =
-    let request = Http.Request.make ~url:(doi_url ~resolver doi) `GET in
-    let* response = Http_client.request ~follow:false httpc request in
-    try Ok (List.assoc "location" (Http.Response.headers response)) with
+    let request = B0_http.Request.make ~url:(doi_url ~resolver doi) `GET in
+    let* response = B0_http.Client.request ~follow:false httpc request in
+    try Ok (List.assoc "location" (B0_http.Response.headers response)) with
     | Not_found -> Error "No 'location' header found in response"
 
   let default_bib_format = "application/x-bibtex; charset=utf-8"
@@ -126,8 +126,8 @@ module Doi = struct
     =
     let headers = ["Accept", format] in
     let url = doi_url ~resolver doi in
-    let request = Http.Request.make ~headers ~url `GET in
-    let* response = Http_client.request ~follow:true httpc request in
+    let request = B0_http.Request.make ~headers ~url `GET in
+    let* response = B0_http.Client.request ~follow:true httpc request in
     response_success request response
 end
 

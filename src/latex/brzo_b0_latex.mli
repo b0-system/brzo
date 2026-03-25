@@ -79,13 +79,13 @@ module Doi : sig
   (** [oneline_bib_format] is "text/bibliography; charset=utf-8". *)
 
   val resolve_to_url :
-    ?resolver:string -> B0_http.Http_client.t -> t -> (string, string) result
+    ?resolver:string -> B0_http.Client.t -> t -> (string, string) result
   (** [resolve_to_url r ~resolver doi] resolve [doi] with [resolver]
       to an URI with [resolver] (defaults to {!default_resolver}). *)
 
   val resolve_to_bib :
     ?format:string -> ?resolver:Net.Url.t ->
-    B0_http.Http_client.t -> t -> (string, string) result
+    B0_http.Client.t -> t -> (string, string) result
   (** [resolve_to_bib r ~resolver doi] resolves [doi] to a bibliographic entry
       with [resolver] (defaults to {!default_resolver}). *)
 end
@@ -110,7 +110,7 @@ module Bibdoi : sig
       to {!Os.File.dash}. *)
 
   val to_bibtex :
-    ?resolver:string -> B0_http.Http_client.t -> t -> (string, string) result
+    ?resolver:string -> B0_http.Client.t -> t -> (string, string) result
   (** [to_bibtex r ~resolver b] resolves the DOIs of [b] to bibtex entries
       using [resolver] (defaults to {!Doi.default_resolver}. *)
 end

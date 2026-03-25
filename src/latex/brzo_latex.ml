@@ -75,7 +75,7 @@ let fingerprint = B0_file_exts.latex_lang
 
 let bibdoi_to_bib m c dc bibdoi =
   let bib = Fpath.(bibdoi -+ ".bib") in
-  let http = B0_http.Http_client.make ~cmd:dc.Conf.curl () in
+  let http = B0_http.Client.make ~cmd:dc.Conf.curl () in
   begin
     B0_memo.ready_file m bibdoi;
     ignore @@
