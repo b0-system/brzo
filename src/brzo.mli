@@ -10,19 +10,19 @@ open B0_std
 (** Memo helpers. *)
 module Memo : sig
   val copy_file :
-    B0_memo.t -> src_root:Fpath.t -> dst_root:Fpath.t ->
-    Fpath.t -> unit
+    B0_memo.t -> src_root:Filepath.t -> dst_root:Filepath.t ->
+    Filepath.t -> unit
     (** [copy m ~src_root ~dst_root src] copies [src] to destination
         {!root_path}[ ~src_root ~dst_root src]. *)
 
   val ensure_exec_build :
-    B0_memo.t -> srcs:B0_file_exts.map -> need_ext:Fpath.ext -> unit Fut.t
+    B0_memo.t -> srcs:B0_file_exts.map -> need_ext:Filepath.ext -> unit Fut.t
   (** [ensure_exe_build m ~srcs ~need_ext k] continues iff there's
       at least a file in [srcs] that has exention [need_ext] and fails
       with a message that no executable can be built otherwise. *)
 
   val run :
-    with_log:Fpath.t option -> B0_memo.t -> (unit -> 'a Fut.t) ->
+    with_log:Filepath.t option -> B0_memo.t -> (unit -> 'a Fut.t) ->
     ('a, unit) result
 end
 
@@ -168,11 +168,11 @@ end
 module Sexp : sig
 
   val of_string :
-    ?file:Fpath.t -> string -> (B0_sexp.Sexp.t, string) result
+    ?file:Filepath.t -> string -> (B0_sexp.Sexp.t, string) result
   (** [of_string] is like {!B0_sexp.Sexp.seq_of_string'} but
       with alternate error formatting. *)
 
-  val of_file : Fpath.t -> (B0_sexp.Sexp.t * 'a list, string) result
+  val of_file : Filepath.t -> (B0_sexp.Sexp.t * 'a list, string) result
   (** [of_file file] reads from [file] using {!of_string}. *)
 
   val query :
@@ -182,7 +182,7 @@ module Sexp : sig
   (** [query] is like {!B0_sexp.Sexp.query'} but with
       alternate error formatting. *)
 
-  val fpath : Fpath.t B0_sexp.Sexpq.t
+  val fpath : Filepath.t B0_sexp.Sexpq.t
   (** [fpath] is queries atoms for file paths. *)
 end
 
@@ -279,13 +279,13 @@ module Conf : sig
   (** The type for configurations. *)
 
   val make :
-    action_args:string list -> background:bool -> b0_dir:Fpath.t ->
-    brzo_file:Fpath.t option -> cache_dir:Fpath.t -> cwd:Fpath.t ->
+    action_args:string list -> background:bool -> b0_dir:Filepath.t ->
+    brzo_file:Filepath.t option -> cache_dir:Filepath.t -> cwd:Filepath.t ->
     domain_name:string option -> domain_confs:domain list ->
-    hash_fun:(module B0_hash.T) -> jobs:int -> log_file:Fpath.t ->
+    hash_fun:(module B0_hash.T) -> jobs:int -> log_file:Filepath.t ->
     no_pager:bool -> outcome_mode:outcome_mode ->
-    output_outcome_path:bool -> pdf_viewer:Cmd.t option -> root:Fpath.t ->
-    srcs_i:Fpath.Set.t -> srcs_x:Fpath.Set.t -> web_browser:Cmd.t option ->
+    output_outcome_path:bool -> pdf_viewer:Cmd.t option -> root:Filepath.t ->
+    srcs_i:Filepath.Set.t -> srcs_x:Filepath.Set.t -> web_browser:Cmd.t option ->
     unit -> t
   (** [v] constructs a configuration with given attributes. See the
       accessors for semantics. *)
@@ -297,17 +297,17 @@ module Conf : sig
   (** [background] is [true] if external viewers should be launched
       in the background. *)
 
-  val brzo_file : t -> Fpath.t option
+  val brzo_file : t -> Filepath.t option
   (** [brzo_file] is the absolute path to the brzo file found at the
       root (if any). *)
 
-  val b0_dir : t -> Fpath.t
+  val b0_dir : t -> Filepath.t
   (** [b0_dir] is the absolute path to the b0 dir. *)
 
-  val cache_dir : t -> Fpath.t
+  val cache_dir : t -> Filepath.t
   (** [cache_dir] is the absolute path to the cache directory. *)
 
-  val cwd : t -> Fpath.t
+  val cwd : t -> Filepath.t
   (** [cwd] is the absolute path to the current working directoy. *)
 
   val domain_name : t -> string option
@@ -322,7 +322,7 @@ module Conf : sig
       [d] (if any). This is the domain's selected
       outcome and its configuration. *)
 
-  val log_file : t -> Fpath.t
+  val log_file : t -> Filepath.t
   (** [log_file] is the absolute path to the build log file. *)
 
   val hash_fun : t -> (module B0_hash.T)
@@ -344,16 +344,16 @@ module Conf : sig
   (** [output_outcome_path] is [true] if the outcome path should be
       output at the end of the build. *)
 
-  val root : t -> Fpath.t
+  val root : t -> Filepath.t
   (** [root] is absolute path to the brzo root. *)
 
   val pdf_viewer : t -> Cmd.t option
   (** [pdf_viewer] is the PDF viewer command. *)
 
-  val srcs_i : t -> Fpath.Set.t
+  val srcs_i : t -> Filepath.Set.t
   (** [srcs_i] are absolute prefixes to include. *)
 
-  val srcs_x : t -> Fpath.Set.t
+  val srcs_x : t -> Filepath.Set.t
   (** [srcs_x] are absolute prefixes to exclude. *)
 
   val srcs : t -> (B0_file_exts.map, string) result

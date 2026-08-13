@@ -6,7 +6,7 @@
 open B0_std
 
 let root ~conf =
-  Log.stdout (fun m -> m "%a" Fpath.pp_unquoted (Brzo.Conf.root conf));
+  Log.stdout (fun m -> m "%a" Filepath.pp_unquoted (Brzo.Conf.root conf));
   Brzo.Exit.ok
 
 (* Command line interface *)

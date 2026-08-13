@@ -11,7 +11,7 @@ let delete ~conf ~clean =
   let b0_dir = Brzo.Conf.b0_dir conf in
   let del_dir = match clean with
   | true -> b0_dir
-  | false -> Fpath.(b0_dir / Brzo.Conf.brzo_dir_name)
+  | false -> Filepath.(b0_dir / Brzo.Conf.brzo_dir_name)
   in
   let* _ = Os.Path.delete ~recurse:true del_dir in
   Ok Brzo.Exit.ok

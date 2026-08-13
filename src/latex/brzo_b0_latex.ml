@@ -14,8 +14,8 @@ end
 module Compile = struct
   let cmd m ?args:(more_args = Cmd.empty) ~tex ~dir ~oname () =
     let xelatex = B0_memo.tool m Tool.xelatex in
-    let pdf = Fpath.(dir / Fmt.str "%s.pdf" oname) in
-    let fls = Fpath.(dir / Fmt.str "%s.fls" oname) in
+    let pdf = Filepath.(dir / Fmt.str "%s.pdf" oname) in
+    let fls = Filepath.(dir / Fmt.str "%s.fls" oname) in
     B0_memo.spawn m ~reads:[tex] ~writes:[pdf; fls] @@
     xelatex Cmd.(arg "-file-line-error" % "-halt-on-error" %
                  "-interaction=errorstopmode" %
@@ -24,10 +24,10 @@ module Compile = struct
 end
 
 module Fls = struct
-  type t = { reads : Fpath.Set.t; writes : Fpath.Set.t }
+  type t = { reads : Filepath.Set.t; writes : Filepath.Set.t }
   let reads f = f.reads
   let writes f = f.writes
-  let of_string ?(file = Fpath.dash) s =
+  let of_string ?(file = Filepath.dash) s =
     let parse_path i p =
       let rem_dot_seg s =
         (* Sometimes paths seem to show up with a leading ./ *)
@@ -35,7 +35,7 @@ module Fls = struct
         | true -> String.subrange ~first:2 s
         | false -> s
       in
-      match Fpath.of_string (rem_dot_seg (String.trim p)) with
+      match Filepath.of_string (rem_dot_seg (String.trim p)) with
       | Ok p -> p
       | Error e -> Fmt.failwith_line i " Cannot parse path: %s" e
     in
@@ -45,8 +45,9 @@ module Fls = struct
     | Some ("OUTPUT", p) -> `Output (parse_path i p)
     | Some ("PWD", p) ->
         let p = parse_path i p in
-        if Fpath.is_absolute p then `Cwd p else
-        Fmt.failwith_line i " PWD directive: %a not absolute" Fpath.pp_quoted p
+        if Filepath.is_absolute p then `Cwd p else
+        Fmt.failwith_line i
+          " PWD directive: %a not absolute" Filepath.pp_quoted p
     | Some (dir, _) -> Fmt.failwith_line i " Unknown directive: %S" dir
     in
     let rec loop i cwd reads writes = function
@@ -56,17 +57,20 @@ module Fls = struct
         | `Cwd cwd ->
             loop (i + 1) cwd reads writes ls
         | `Input p ->
-            loop (i + 1) cwd (Fpath.Set.add Fpath.(cwd // p) reads) writes ls
+            loop (i + 1) cwd
+              (Filepath.Set.add Filepath.(cwd // p) reads) writes ls
         | `Output p ->
-            loop (i + 1) cwd reads (Fpath.Set.add Fpath.(cwd // p) writes) ls
+            loop (i + 1) cwd reads
+              (Filepath.Set.add Filepath.(cwd // p) writes) ls
     in
     try
       (* TODO if there's no muliline parse use fold directly *)
       let add_line _ acc l = l :: acc in
       let rlines = String.fold_ascii_lines ~drop_newlines:true add_line [] s in
-      loop 1 (Fpath.v "/") Fpath.Set.empty Fpath.Set.empty (List.rev rlines)
+      loop 1
+        (Filepath.v "/") Filepath.Set.empty Filepath.Set.empty (List.rev rlines)
     with
-    | Failure e -> Fpath.error file "%s" e
+    | Failure e -> Filepath.error file "%s" e
 end
 
 module Latex = struct
@@ -150,9 +154,9 @@ module Bibdoi = struct
   let qdoi = Sexpq.atom_to ~kind:"DOI" parse_doi
   let qdois = Sexpq.list qdoi
 
-  let of_string ?(file = Fpath.dash) s =
+  let of_string ?(file = Filepath.dash) s =
     let open B0_sexp in
-    let file = Fpath.to_string file in
+    let file = Filepath.to_string file in
     Result.bind (Sexp.seq_of_string' ~file s) @@ fun sexp ->
     Result.bind (Sexpq.query' qdois sexp) @@ fun dois ->
     Ok { sexp; dois }

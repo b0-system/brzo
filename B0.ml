@@ -25,9 +25,11 @@ let brzo_tool =
     | _ -> "brzo_read_cmi_geq_408"
     in
     let scope_dir = B0_build.scope_dir b in
-    let file = Fpath.(scope_dir / "src"/ "ocaml" / dir / "brzo_read_cmi.ml") in
+    let file =
+      Filepath.(scope_dir / "src"/ "ocaml" / dir / "brzo_read_cmi.ml")
+    in
     B0_memo.ready_file (B0_build.memo b) file;
-    Fut.return (Fpath.Set.singleton file)
+    Fut.return (Filepath.Set.singleton file)
   in
   let requires =
     [cmdliner; unix; b0_std; b0_memo; b0_file; b0_kit; compiler_libs_common]

@@ -61,23 +61,23 @@ module Js_of_ocaml = struct
       Fmt.str "{name:\"%s\", content: %s}" (js_escape n) (js_array ~buf c)
     in
     let buf = Buffer.create 255 in
-    let add_file_arg acc a = match Fpath.of_string a with
+    let add_file_arg acc a = match Filepath.of_string a with
     | Error _ -> acc
     | Ok a ->
-        let file = Fpath.(cwd // a) in
+        let file = Filepath.(cwd // a) in
         match Os.File.exists file |> Result.value ~default:false with
         | false -> acc
         | true ->
             match Os.File.read file with
             | Error e -> Log.err (fun m -> m "%s" e); acc
-            | Ok c -> js_file ~buf (Fpath.to_string file) c :: acc
+            | Ok c -> js_file ~buf (Filepath.to_string file) c :: acc
     in
     List.fold_left add_file_arg [] args
 
   (* See caml_sys_{getenv,get_argv} in jsoo's stdlib.js. *)
   let tty_glue ~exe ~cwd ~env ~args =
     let files = js_fs_tmp_files ~cwd ~args in
-    let cwd = js_escape (Fpath.to_string cwd) in
+    let cwd = js_escape (Filepath.to_string cwd) in
     let env =
       let env_var k v = Fmt.str "\"%s\": \"%s\"" (js_escape k) (js_escape v) in
       let add_var k v acc = env_var k v :: acc in
@@ -86,7 +86,7 @@ module Js_of_ocaml = struct
     in
     let args =
       let cli_arg a = Fmt.str "\"%s\"" (js_escape a) in
-      let exe = cli_arg (Fpath.to_string exe) in
+      let exe = cli_arg (Filepath.to_string exe) in
       exe :: exe :: List.map cli_arg args
     in
     Fmt.str "(function () {\n\
@@ -117,7 +117,7 @@ body { background: #181B20; color: #8C8D90; }
       ?(styles = []) ?(title = "") m ~o
     =
     let title = if title = ""
-      then Fpath.basename ~drop_exts:true o else title in
+      then Filepath.basename ~drop_exts:true o else title in
     let stamp =
       String.concat ""
         (string_of_bool toplevel_css :: generator :: lang :: title ::

@@ -7,14 +7,14 @@ open B0_std
 open B0_std.Fut.Syntax
 
 module Mod_resolver = struct
-  type dep = Fpath.t
+  type dep = Filepath.t
   type deps = [ `Open of dep list | `Locked of dep list ]
   let unrestricted = `Open []
   let restrictions m index dep_dirs deps =
     let rec add_dep added acc miss dep = function
     | dir :: dirs ->
-        let d = Fpath.(ensure_trailing_dir_sep @@ dir // dep) in
-        if Fpath.Set.mem d (B0_findex.dirs index)
+        let d = Filepath.(ensure_trailing_dir_sep @@ dir // dep) in
+        if Filepath.Set.mem d (B0_findex.dirs index)
         then add_dep true (d :: acc) miss dep dirs
         else add_dep added acc miss dep dirs
     | [] when added -> acc, miss
@@ -30,14 +30,14 @@ module Mod_resolver = struct
 
   type t =
     { m : B0_memo.t;
-      memo_dir : Fpath.t;
+      memo_dir : Filepath.t;
       index : B0_findex.t;
       deps : deps;
-      restrictions : Fpath.t list; (* existing (dep_dirs x deps) dirs *)
-      mutable cmi_by_file : Brzo_ocaml_cmi.t Fut.t Fpath.Map.t;
+      restrictions : Filepath.t list; (* existing (dep_dirs x deps) dirs *)
+      mutable cmi_by_file : Brzo_ocaml_cmi.t Fut.t Filepath.Map.t;
       mutable modref_cmi : Brzo_ocaml_cmi.t list B0_ocaml.Modref.Map.t;
       mutable cobjs :
-        B0_ocaml.Cobj.t list Fut.t Fpath.Map.t; (* Mapped by dir. *)
+        B0_ocaml.Cobj.t list Fut.t Filepath.Map.t; (* Mapped by dir. *)
       mutable modref_cobj : B0_ocaml.Cobj.t list B0_ocaml.Modref.Map.t; }
 
   let create m ~memo_dir ~dep_dirs deps =
@@ -49,8 +49,8 @@ module Mod_resolver = struct
     in
     let restrictions, miss = restrictions m index dep_dirs deps in
     { m; memo_dir; index; deps; restrictions;
-      cmi_by_file = Fpath.Map.empty; modref_cmi = B0_ocaml.Modref.Map.empty;
-      cobjs = Fpath.Map.empty; modref_cobj = B0_ocaml.Modref.Map.empty; },
+      cmi_by_file = Filepath.Map.empty; modref_cmi = B0_ocaml.Modref.Map.empty;
+      cobjs = Filepath.Map.empty; modref_cobj = B0_ocaml.Modref.Map.empty; },
     `Miss_deps miss
 
   let memo r = r.m
@@ -58,20 +58,20 @@ module Mod_resolver = struct
   let deps r = r.deps
   let index r = r.index
   let dep_of_file r f =
-    let dir_dep f dir = match Fpath.drop_strict_prefix ~prefix:dir f with
+    let dir_dep f dir = match Filepath.drop_strict_prefix ~prefix:dir f with
     | None -> None
-    | Some rel -> Some (Fpath.drop_trailing_dir_sep @@ Fpath.parent rel)
+    | Some rel -> Some (Filepath.drop_trailing_dir_sep @@ Filepath.parent rel)
     in
     List.find_map (dir_dep f) (dep_dirs r)
 
   let dep_dirs_deps r =
     let find_deps_in_root_dir r root_dir =
-      let parent = Fpath.parent root_dir in
+      let parent = Filepath.parent root_dir in
       let rem_parent f =
-        Option.get (Fpath.drop_strict_prefix ~prefix:parent f)
+        Option.get (Filepath.drop_strict_prefix ~prefix:parent f)
       in
       let rec loop acc = function
-      | [] -> List.rev_map Fpath.drop_trailing_dir_sep acc
+      | [] -> List.rev_map Filepath.drop_trailing_dir_sep acc
       | d :: ds ->
           let subs = B0_findex.dir_dirs r.index d in
           let deps = List.rev_map rem_parent subs in
@@ -87,13 +87,13 @@ module Mod_resolver = struct
     match r.deps with
     | `Open [] -> fs
     | `Open _ ->
-        let pfs = List.rev_map (fun f -> Fpath.parent f, f) fs in
+        let pfs = List.rev_map (fun f -> Filepath.parent f, f) fs in
         begin match List.find_map (restrict pfs) r.restrictions with
         | None -> fs
         | Some f -> [f]
         end
     | `Locked _ ->
-        let pfs = List.rev_map (fun f -> Fpath.parent f, f) fs in
+        let pfs = List.rev_map (fun f -> Filepath.parent f, f) fs in
         begin match List.find_map (restrict pfs) r.restrictions with
         | None -> (* FIXME show hints *) []
         | Some f -> [f]
@@ -101,11 +101,11 @@ module Mod_resolver = struct
 
   (* Lookups *)
 
-  let cmi_obj r cmi_file = match Fpath.Map.find_opt cmi_file r.cmi_by_file with
+  let cmi_obj r cmi_file = match Filepath.Map.find_opt cmi_file r.cmi_by_file with
   | Some info -> info
   | None ->
       let info, set_info = Fut.make () in
-      r.cmi_by_file <- Fpath.Map.add cmi_file info r.cmi_by_file;
+      r.cmi_by_file <- Filepath.Map.add cmi_file info r.cmi_by_file;
       begin
         ignore @@
         let* info = Brzo_ocaml_cmi.read r.m cmi_file in
@@ -118,8 +118,8 @@ module Mod_resolver = struct
       info
 
   let find_cmi_side_cmx_file r cmi =
-    let cmx = Fpath.(Brzo_ocaml_cmi.file cmi -+ ".cmx") in
-    if not (Fpath.Set.mem cmx (B0_findex.files r.index)) then None else
+    let cmx = Filepath.(Brzo_ocaml_cmi.file cmi -+ ".cmx") in
+    if not (Filepath.Set.mem cmx (B0_findex.files r.index)) then None else
     (B0_memo.ready_file r.m cmx; Some cmx)
 
   let find_cmi_files_for_modname r mname =
@@ -148,29 +148,29 @@ module Mod_resolver = struct
         | None ->
             B0_memo.fail r.m "%a: couldn't find a matching cmi: %a"
               B0_ocaml.Modref.pp ref
-              Fmt.(list Fpath.pp_quoted) cmi_files
+              Fmt.(list Filepath.pp_quoted) cmi_files
 
-  let get_cobjs_info ~ext r dir = match Fpath.Map.find_opt dir r.cobjs with
+  let get_cobjs_info ~ext r dir = match Filepath.Map.find_opt dir r.cobjs with
   | Some info -> info
   | None ->
       let info, set_info = Fut.make () in
-      r.cobjs <- Fpath.Map.add dir info r.cobjs;
+      r.cobjs <- Filepath.Map.add dir info r.cobjs;
       begin
         ignore @@
         let files = B0_findex.dir_files r.index dir in
-        let cobjs = List.filter (Fpath.has_ext ext) files in
+        let cobjs = List.filter (Filepath.has_ext ext) files in
         let o =
-          let base = Fpath.basename dir in
+          let base = Filepath.basename dir in
           let uniq =
-            B0_hash.to_hex (B0_memo.hash_string r.m (Fpath.to_string dir))
+            B0_hash.to_hex (B0_memo.hash_string r.m (Filepath.to_string dir))
           in
-          Fpath.(r.memo_dir / Fmt.str "%s-%s%s.info" base uniq ext)
+          Filepath.(r.memo_dir / Fmt.str "%s-%s%s.info" base uniq ext)
         in
         B0_memo.ready_files r.m cobjs;
         if ext = ".cmxa" then begin
           List.iter
             (fun o ->
-               B0_memo.ready_file r.m (Fpath.with_ext ~multi:false ".a" o)) cobjs
+               B0_memo.ready_file r.m (Filepath.with_ext ~multi:false ".a" o)) cobjs
         end;
         B0_ocaml.Cobj.write r.m ~cobjs ~o;
         let* cobjs = B0_ocaml.Cobj.read r.m o in
@@ -191,7 +191,7 @@ module Mod_resolver = struct
   let find_impl_for_modref r ~ext ref =
     let amb cobjs =
       let pext = ".p" ^ ext in (* TODO doc filter out profile objects *)
-      let not_pext cobj = not (Fpath.has_ext pext (B0_ocaml.Cobj.file cobj)) in
+      let not_pext cobj = not (Filepath.has_ext pext (B0_ocaml.Cobj.file cobj)) in
       match List.filter not_pext cobjs with
       | [cobj] -> Fut.return (Some cobj)
       | cobjs ->
@@ -210,7 +210,7 @@ module Mod_resolver = struct
         | cmis ->
             let rec loop r = function
             | cmi :: cmis ->
-                let cmi_dir = Fpath.parent (Brzo_ocaml_cmi.file cmi) in
+                let cmi_dir = Filepath.parent (Brzo_ocaml_cmi.file cmi) in
                 let dirs = cmi_dir :: B0_findex.dir_dirs r.index cmi_dir in
                 let rec go = function
                 | [] -> loop r cmis

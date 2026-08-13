@@ -6,7 +6,7 @@
 open B0_std
 
 val read :
-  Fpath.t ->
+  Filepath.t ->
   (string * Digest.t * String.Set.t * (string * Digest.t) list, string) result
 (** [read cmi] is [Ok (name, digest, names, deps)] with
     {ul

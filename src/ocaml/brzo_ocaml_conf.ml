@@ -24,8 +24,8 @@ let default_target ~default_native_if:tool m target = match target with
 
 type t =
   { target : target option;
-    ocamlpath : Fpath.t list;
-    libs : Fpath.t list;
+    ocamlpath : Filepath.t list;
+    libs : Filepath.t list;
     lock_libs : bool; }
 
 let target c = c.target
@@ -36,8 +36,8 @@ let pp =
   let pp_target ppf t = Fmt.string ppf (target_to_string t) in
   Fmt.record
     [ Fmt.field "target" target (Brzo.Conf.pp_auto pp_target);
-      Fmt.field "ocamlpath" ocamlpath (Fmt.vbox (Fmt.list Fpath.pp_quoted));
-      Fmt.field "libs" libs (Fmt.vbox (Fmt.list Fpath.pp_quoted));
+      Fmt.field "ocamlpath" ocamlpath (Fmt.vbox (Fmt.list Filepath.pp_quoted));
+      Fmt.field "libs" libs (Fmt.vbox (Fmt.list Filepath.pp_quoted));
       Fmt.field "lock-libs" lock_libs Fmt.bool; ]
 
 let tid = Type.Id.make ()
@@ -88,15 +88,16 @@ let ocamlpath_c =
 let libs_key = "libs"
 let libs_c =
   let parse_lib s =
-    Result.bind (Fpath.of_string s) @@ fun p -> match Fpath.is_relative p with
-    | true -> Ok (Fpath.drop_trailing_dir_sep p)
-    | false -> Fmt.error "%a: not a library name" Fpath.pp_unquoted p
+    Result.bind (Filepath.of_string s) @@ fun p ->
+    match Filepath.is_relative p with
+    | true -> Ok (Filepath.drop_trailing_dir_sep p)
+    | false -> Fmt.error "%a: not a library name" Filepath.pp_unquoted p
   in
   let conf = Sexpq.(list (atom_to ~kind:"lib" parse_lib)) in
   let cli =
     let lib =
       let parse s = Result.map_error (fun e -> `Msg e) (parse_lib s) in
-      let pp ppf p = Fmt.(code' Fpath.pp_unquoted) ppf p in
+      let pp ppf p = Fmt.(code' Filepath.pp_unquoted) ppf p in
       Arg.conv ~docv:"LIB" (parse, pp)
     in
     let doc =

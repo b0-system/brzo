@@ -31,10 +31,10 @@ let sources ~conf ~doms =
     in
     String.Map.fold add_files src_by_exts []
   in
-  match List.sort Fpath.compare srcs with
+  match List.sort Filepath.compare srcs with
   | [] -> Ok Brzo.Exit.ok
   | srcs ->
-      Log.stdout (fun m -> m "@[<v>%a@]" (Fmt.list Fpath.pp_unquoted) srcs);
+      Log.stdout (fun m -> m "@[<v>%a@]" (Fmt.list Filepath.pp_unquoted) srcs);
       Ok Brzo.Exit.ok
 
 (* Command line interface *)

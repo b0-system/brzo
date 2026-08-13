@@ -43,7 +43,7 @@ let keys ~kind ~conf =
 let path ~conf =
   Log.if_error ~use:Brzo.Exit.some_error @@
   let dir = Brzo.Conf.cache_dir conf in
-  Fmt.pr "%a@." Fpath.pp_unquoted dir;
+  Fmt.pr "%a@." Filepath.pp_unquoted dir;
   Ok Brzo.Exit.ok
 
 let stats ~conf =

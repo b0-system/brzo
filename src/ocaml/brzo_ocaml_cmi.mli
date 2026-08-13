@@ -10,10 +10,10 @@ open B0_std
 type t
 (** The type for compiled interfaces. *)
 
-val read : B0_memo.t -> Fpath.t -> t Fut.t
+val read : B0_memo.t -> Filepath.t -> t Fut.t
 (** [read f] reads an object file from [f]. *)
 
-val file : t -> Fpath.t
+val file : t -> Filepath.t
 (** [file cmi] is the file path of [cmi]. *)
 
 val modref : t -> B0_ocaml.Modref.t

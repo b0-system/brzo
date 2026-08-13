@@ -34,7 +34,7 @@ module Inc_deps = struct
   let parse_path root max s start =
     let path s first last =
       let token = String.subrange ~first ~last s in
-      Fpath.(root // (of_string token |> Result.error_to_failure))
+      Filepath.(root // (of_string token |> Result.error_to_failure))
     in
     let rec loop max s i =
       if i > max then i, path s start (i - 1) else
@@ -45,7 +45,7 @@ module Inc_deps = struct
     in
     loop max s start
 
-  let of_string ?(file = Fpath.null) ~root s =
+  let of_string ?(file = Filepath.null) ~root s =
     let rec loop root acc max s i =
       let i = skip_white max s i in
       if i > max then List.rev acc else
@@ -54,7 +54,7 @@ module Inc_deps = struct
     in
     let max = String.length s - 1 in
     try Ok (loop root [] max s (find_start max s 0)) with
-    | Failure e -> Fmt.error "%a: %s" Fpath.pp_unquoted file e
+    | Failure e -> Fmt.error "%a: %s" Filepath.pp_unquoted file e
 
   let write ?(deps = []) m ~src ~o =
     let gcc = B0_memo.tool m Tool.gcc in
@@ -64,7 +64,7 @@ module Inc_deps = struct
 
   let read m ~src file =
     let* s = B0_memo.read m file in
-    let deps = of_string ~file ~root:(Fpath.parent src) s in
+    let deps = of_string ~file ~root:(Filepath.parent src) s in
     let deps = B0_memo.fail_if_error m deps in
     Fut.return deps
 end

@@ -13,7 +13,7 @@ module Tool : sig
 end
 
 module Conf : sig
-  val obj_ext : B0_memo.t -> Fpath.ext Fut.t
+  val obj_ext : B0_memo.t -> Filepath.ext Fut.t
 end
 
 (** C include dependencies (via [gcc] [-M])
@@ -23,14 +23,14 @@ end
 module Inc_deps : sig
 
   val write :
-    ?deps:Fpath.t list -> B0_memo.t -> src:Fpath.t -> o:Fpath.t -> unit
+    ?deps:Filepath.t list -> B0_memo.t -> src:Filepath.t -> o:Filepath.t -> unit
   (** [write m ~deps src o] writes dependencies of [src] in file
       [o]. [deps] indicates these files should become ready first: we
       do not use [-MG] as it leads to output race conditions so one
       needs to make sure all generated includes that may end up being
       used {!src} are generated before asking for dependencies. *)
 
-  val read : B0_memo.t -> src:Fpath.t -> Fpath.t -> Fpath.t list Fut.t
+  val read : B0_memo.t -> src:Filepath.t -> Filepath.t -> Filepath.t list Fut.t
   (** [read m file] reads dependencies produced by {!write} in [file]
       for source [src] (whose parent directory is used to make paths
       absolute, see {!of_string}). *)
@@ -38,7 +38,8 @@ module Inc_deps : sig
   (** {1:low Low-level parsing} *)
 
   val of_string :
-    ?file:Fpath.t -> root:Fpath.t -> string -> (Fpath.t list, string) result
+    ?file:Filepath.t -> root:Filepath.t -> string ->
+    (Filepath.t list, string) result
   (** [of_string ~file ~src s] parses [-M] dependencies data from [s]
       assuming it was read from file [file] (for error reporting,
       defaults to {!Os.File.dash}). [root] is used to make file paths
@@ -49,8 +50,8 @@ end
 module Compile : sig
   val c_to_o :
     ?post_exec:(B0_zero.Op.t -> unit) -> ?k:(B0_zero.Op.t -> int -> unit) ->
-    ?args:B0_std.Cmd.t -> B0_memo.t -> deps:Fpath.t list -> c:Fpath.t ->
-    o:Fpath.t -> unit
+    ?args:B0_std.Cmd.t -> B0_memo.t -> deps:Filepath.t list -> c:Filepath.t ->
+    o:Filepath.t -> unit
   (** [c_to_o m ~deps ~c ~o] compiles [c] to the object file [o]
       assuming [c] depends on [deps]. *)
 end
@@ -59,7 +60,7 @@ module Link : sig
 
   val exe :
     ?post_exec:(B0_zero.Op.t -> unit) -> ?k:(B0_zero.Op.t -> int -> unit) ->
-    ?args:B0_std.Cmd.t -> B0_memo.t -> objs:Fpath.t list -> o:Fpath.t ->
+    ?args:B0_std.Cmd.t -> B0_memo.t -> objs:Filepath.t list -> o:Filepath.t ->
     unit
     (** [exe m ~args ~objs ~o] links the objects [objs] into executable [o]. *)
 end

@@ -38,7 +38,7 @@ let get_brzo_file ~conf k =
   match Brzo.Conf.brzo_file conf with
   | Some file -> k file
   | None ->
-      let pp_root = Fmt.code' Fpath.pp_unquoted in
+      let pp_root = Fmt.code' Filepath.pp_unquoted in
       Fmt.error "No BRZO file found in root %a" pp_root (Brzo.Conf.root conf)
 
 let get_sexp_of_file file k =
@@ -70,7 +70,7 @@ let edit ~conf =
   Log.if_error ~use:Brzo.Exit.some_error @@
   let brzo_file = match Brzo.Conf.brzo_file conf with
   | Some file -> file
-  | None -> Fpath.(Brzo.Conf.root conf / Brzo.Conf.brzo_file_name)
+  | None -> Filepath.(Brzo.Conf.root conf / Brzo.Conf.brzo_file_name)
   in
   let* editor = B0_editor.find () in
   let* exit = B0_editor.edit_files editor [brzo_file] in
@@ -98,7 +98,7 @@ let get ~conf ~spath =
 let path ~conf =
   Log.if_error ~use:Brzo.Exit.some_error @@
   get_brzo_file ~conf @@ fun file ->
-  Log.stdout (fun m -> m "%a" Fpath.pp_unquoted file);
+  Log.stdout (fun m -> m "%a" Filepath.pp_unquoted file);
   Ok Brzo.Exit.ok
 
 let set ~conf ~caret ~sexps ~dry_run =

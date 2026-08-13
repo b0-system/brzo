@@ -11,15 +11,15 @@ type 'a build_dir_suff =
   B0_memo.t -> Brzo.Conf.t -> 'a -> string Fut.t
 
 type 'a artefact =
-  B0_memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t -> Fpath.t Fut.t
+  B0_memo.t -> Brzo.Conf.t -> 'a -> build_dir:Filepath.t -> Filepath.t Fut.t
 
 type 'a build =
-  B0_memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t ->
-  artefact:Fpath.t -> srcs:B0_file_exts.map -> unit Fut.t
+  B0_memo.t -> Brzo.Conf.t -> 'a -> build_dir:Filepath.t ->
+  artefact:Filepath.t -> srcs:B0_file_exts.map -> unit Fut.t
 
 type 'a action =
-  B0_memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t ->
-  artefact:Fpath.t -> (unit -> (Os.Exit.t, string) result) Fut.t
+  B0_memo.t -> Brzo.Conf.t -> 'a -> build_dir:Filepath.t ->
+  artefact:Filepath.t -> (unit -> (Os.Exit.t, string) result) Fut.t
 
 (* Outcomes *)
 
@@ -72,7 +72,7 @@ module Action = struct
 
   let show_uri m c _ ~build_dir:_ ~artefact =
     Fut.return @@ fun () ->
-    let url = Fmt.str "file://%s" (Fpath.to_string artefact) in
+    let url = Fmt.str "file://%s" (Filepath.to_string artefact) in
     let browser = Brzo.Conf.web_browser c in
     let background = Brzo.Conf.background c in
     let* browser = B0_web_browser.find ?cmd:browser () in

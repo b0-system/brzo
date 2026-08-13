@@ -28,7 +28,7 @@ module Conf = struct
   open Cmdliner
 
   type t =
-    { doxyfile : Fpath.t option;
+    { doxyfile : Filepath.t option;
       use_dot : bool; }
 
   let doxyfile c = c.doxyfile
@@ -47,7 +47,7 @@ module Conf = struct
       ~conf:Sexpq.(some (atomic Brzo.Sexp.fpath))
       ~arg:
         Cmdliner.Arg.(opt (some ~none:"generated"
-                             (some B0_std_cli.filepath)) None)
+                             (some B0_std_cli.file)) None)
 
   let use_dot_key = "use-dot"
   let use_dot_c =
@@ -72,7 +72,7 @@ module Conf = struct
 
   let pp =
     Fmt.record
-      [ Fmt.field "doxyfile" doxyfile (Brzo.Conf.pp_auto Fpath.pp_unquoted);
+      [ Fmt.field "doxyfile" doxyfile (Brzo.Conf.pp_auto Filepath.pp_unquoted);
         Fmt.field "use-dot" use_dot Fmt.bool ]
 end
 
@@ -86,9 +86,9 @@ type builder =
   { m : B0_memo.t;
     c : Brzo.Conf.t;
     dc : Conf.t;
-    src_root : Fpath.t;
+    src_root : Filepath.t;
     srcs : B0_file_exts.map;
-    build_dir : Fpath.t; }
+    build_dir : Filepath.t; }
 
 let builder m c dc ~build_dir ~srcs =
   let src_root = Brzo.Conf.root c in
@@ -97,8 +97,8 @@ let builder m c dc ~build_dir ~srcs =
 let default_flags = Cmd.(arg "-g" % "-Wall")
 
 let compile_src b ~in_dir ~obj_ext ~deps cname c =
-  let d = Fpath.(in_dir / Fmt.str "%s%s" cname ".d") in
-  let o = Fpath.(in_dir / Fmt.str "%s%s" cname obj_ext) in
+  let d = Filepath.(in_dir / Fmt.str "%s%s" cname ".d") in
+  let o = Filepath.(in_dir / Fmt.str "%s%s" cname obj_ext) in
   begin
     B0_memo.ready_file b.m c;
     Inc_deps.write b.m ~src:c ~o:d;
@@ -115,7 +115,7 @@ let compile_srcs b ~in_dir =
   let rec loop os cunits hs = function
   | [] -> Fut.return os
   | c :: cs ->
-      let cname = Fpath.basename ~drop_exts:true c in
+      let cname = Filepath.basename ~drop_exts:true c in
       match String.Map.find cname cunits with
       | exception Not_found ->
           let o = compile_src b ~in_dir ~obj_ext ~deps:hs cname c in
@@ -125,7 +125,7 @@ let compile_srcs b ~in_dir =
           B0_memo.notify b.m `Warn
             "@[<v>%a:@,File ignored. %a's compilation unit already defined \
              by file:@,%a:@]"
-            Fpath.pp_unquoted c Fmt.code cname Fpath.pp_unquoted f;
+            Filepath.pp_unquoted c Fmt.code cname Filepath.pp_unquoted f;
           loop os cunits hs cs
   in
   let hs = B0_file_exts.(find_files (ext ".h") b.srcs) in
@@ -146,7 +146,7 @@ let exec_build m c dc ~build_dir ~artefact ~srcs =
 let exec =
   let name = "exec" and doc = "Build and execute a program (default)." in
   let artefact m _ _ ~build_dir =
-    Fut.return Fpath.(build_dir / "a.out")
+    Fut.return Filepath.(build_dir / "a.out")
   in
   let build = exec_build and action = Brzo_outcome.Action.exec in
   Brzo_outcome.v ~name ~doc ~artefact ~build ~action_has_args:true ~action ()
@@ -154,7 +154,7 @@ let exec =
 
 (* Doc outcome (doxygen) *)
 
-let doxy_qpath f = Fmt.str "\"%s\"" (Fpath.to_string f)
+let doxy_qpath f = Fmt.str "\"%s\"" (Filepath.to_string f)
 let doxy_srcs srcs =
   let srcs = List.map doxy_qpath srcs in
   (String.concat " \\\n" srcs) ^ "\n"
@@ -207,7 +207,7 @@ doxy (doxy_qpath out_dir) (doxy_srcs srcs)
 
 let find_doxyfile m c dc = match Conf.doxyfile dc with
 | None ->
-    let doxyfile = Fpath.(Brzo.Conf.root c / "Doxyfile") in
+    let doxyfile = Filepath.(Brzo.Conf.root c / "Doxyfile") in
     if Os.File.exists doxyfile |> B0_memo.fail_if_error m
     then Some doxyfile else None
 | Some doxyfile ->
@@ -215,7 +215,7 @@ let find_doxyfile m c dc = match Conf.doxyfile dc with
     | true -> Some doxyfile
     | false ->
         B0_memo.fail m "Doxyfile %a not found."
-          Fmt.(code' Fpath.pp_unquoted) doxyfile
+          Fmt.(code' Filepath.pp_unquoted) doxyfile
 
 let vcs_version ~root =
   Log.if_error ~use:"" @@
@@ -233,7 +233,7 @@ let write_doxyfile m c dc ~out_dir ~srcs ~o =
       Fut.return ()
   | None ->
       let root = Brzo.Conf.root c in
-      let project_name = Fpath.basename root in
+      let project_name = Filepath.basename root in
       let version = vcs_version ~root in
       let* use_dot =
         if not (Conf.use_dot dc) then Fut.return false else
@@ -255,11 +255,11 @@ let write_doxyfile m c dc ~out_dir ~srcs ~o =
       Fut.return ()
 
 let doc_build m c dc ~build_dir ~artefact ~srcs =
-  let out_dir = Fpath.(build_dir / "o") in
+  let out_dir = Filepath.(build_dir / "o") in
   let srcs_exts = B0_file_exts.(ext ".md" + ext ".h" + ext ".c") in
   let srcs = B0_file_exts.find_files srcs_exts srcs in
   B0_memo.ready_files m srcs;
-  let doxyfile = Fpath.(build_dir / "Doxyfile") in
+  let doxyfile = Filepath.(build_dir / "Doxyfile") in
   write_doxyfile m c dc ~out_dir ~srcs ~o:doxyfile;
   let doxygen = B0_memo.tool m Brzo_b0_doxygen.Tool.doxygen in
   B0_memo.spawn' m ~reads:(doxyfile :: srcs) ~writes_root:out_dir @@
@@ -269,7 +269,7 @@ let doc_build m c dc ~build_dir ~artefact ~srcs =
 let doc =
   let name = "doc" and doc = "Build and show source documentation (doxygen)." in
   let artefact m _ _ ~build_dir =
-    Fut.return Fpath.(build_dir / "o" / "html")
+    Fut.return Filepath.(build_dir / "o" / "html")
   in
   let build = doc_build and action = Brzo_outcome.Action.show_uri in
   Brzo_outcome.v ~name ~doc ~artefact ~build ~action_has_args:false ~action ()
@@ -278,7 +278,7 @@ let html =
   let name = "html" in
   let doc = "Build and execute a HTML program (emscripten)." in
   let artefact m _ _ ~build_dir =
-    Fut.return Fpath.(build_dir / "index.html")
+    Fut.return Filepath.(build_dir / "index.html")
   in
   let build m c _ ~build_dir ~artefact ~srcs = failwith "TODO" in
   let action _ c _ ~build_dir ~artefact = failwith "TODO" in

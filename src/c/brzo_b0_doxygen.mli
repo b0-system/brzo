@@ -16,4 +16,4 @@ module Tool : sig
 end
 
 
-val cmd : reads:Fpath.t list -> conf:string -> unit
+val cmd : reads:Filepath.t list -> conf:string -> unit

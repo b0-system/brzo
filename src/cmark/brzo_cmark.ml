@@ -23,16 +23,16 @@ let fingerprint = B0_file_exts.cmark
 (* Outcome builds *)
 
 let urls_rel ~to_dir ~files =
-  let add acc f = Fpath.to_url_path (Fpath.relative ~to_dir f) :: acc in
+  let add acc f = Filepath.to_url_path (Filepath.relative ~to_dir f) :: acc in
   List.rev (List.fold_left add [] files)
 
 let md_to_html m ~src_root ~build_dir ~html_dir ~js_files ~css_files md =
   let generator = "brzo %%VERSION%% cmark" in
-  let to_dir = Fpath.parent md in
+  let to_dir = Filepath.parent md in
   let scripts = urls_rel ~to_dir ~files:js_files in
   let styles = urls_rel ~to_dir ~files:css_files in
-  let o_frag = Fpath.(reroot ~src_root ~dst_root:build_dir md -+ ".htmlf") in
-  let o = Fpath.(reroot ~src_root ~dst_root:html_dir md -+ ".html") in
+  let o_frag = Filepath.(reroot ~src_root ~dst_root:build_dir md -+ ".htmlf") in
+  let o = Filepath.(reroot ~src_root ~dst_root:html_dir md -+ ".html") in
   let opts = Cmd.empty in
   B0_memo.ready_file m md;
   B0_cmark.to_html m ~opts ~mds:[md] ~generator ~scripts ~styles ~o_frag ~o
@@ -56,7 +56,7 @@ let build_web m c _ ~build_dir ~artefact ~srcs =
 let exec =
   let name = "exec" and doc = "Build and execute an HTML program (default)." in
   let artefact m c _ ~build_dir =
-    Fut.return Fpath.(build_dir / "html")
+    Fut.return Filepath.(build_dir / "html")
   in
   let build = build_web in
   let action = Brzo_outcome.Action.show_uri in

@@ -32,7 +32,7 @@ let get_outcome_and_conf (type c) c (module D : T with type Conf.t = c) =
 let build_dir (type c) (module D : T with type Conf.t = c) o m c dc =
   let* suff = Brzo_outcome.build_dir_suff o m c dc in
   let d = Fmt.str "%s-%s%s" D.name (Brzo_outcome.name o) suff in
-  let d = Fpath.(Brzo.Conf.b0_dir c / Brzo.Conf.brzo_dir_name / d) in
+  let d = Filepath.(Brzo.Conf.b0_dir c / Brzo.Conf.brzo_dir_name / d) in
   Fut.return d
 
 let run_outcome_build o m c dc ~build_dir ~artefact =
@@ -76,7 +76,7 @@ let path_mode c domain m () =
   let o, dc = get_outcome_and_conf c domain in
   let* build_dir = build_dir domain o m c dc in
   let* artefact = (Brzo_outcome.artefact o) m c dc ~build_dir in
-  Log.stdout (fun m -> m "%a" Fpath.pp_unquoted artefact);
+  Log.stdout (fun m -> m "%a" Filepath.pp_unquoted artefact);
   Fut.return (`Exit Brzo.Exit.ok)
 
 let delete_mode c domain m () =
@@ -91,7 +91,7 @@ let build_mode c domain m () =
   let* artefact = (Brzo_outcome.artefact o) m c dc ~build_dir in
   let* () = run_outcome_build o m c dc ~build_dir ~artefact in
   if Brzo.Conf.output_outcome_path c
-  then Log.stdout (fun m -> m "%a" Fpath.pp_unquoted artefact);
+  then Log.stdout (fun m -> m "%a" Filepath.pp_unquoted artefact);
   Fut.return (`Exit Brzo.Exit.ok)
 
 let normal_mode c domain m () =

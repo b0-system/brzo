@@ -17,7 +17,7 @@ module Mod_resolver : sig
 
   (** {1:res Resolution restrictions} *)
 
-  type dep = Fpath.t
+  type dep = Filepath.t
   (** The type for dependency restrictions. This is a relative file
       path denoting a directory in one of the dependency directories. *)
 
@@ -45,7 +45,7 @@ module Mod_resolver : sig
   (** The type for data-driven module resolvers. *)
 
   val create :
-    B0_memo.t -> memo_dir:Fpath.t -> dep_dirs:Fpath.t list -> deps ->
+    B0_memo.t -> memo_dir:Filepath.t -> dep_dirs:Filepath.t list -> deps ->
     t * [`Miss_deps of dep list]
   (** [create m ~memo_dir ~dep_dirs deps] is a module resolver with
       restrictions [deps] in dependency directories [dep_dirs] using
@@ -60,7 +60,7 @@ module Mod_resolver : sig
   (** [index r] is the file index of [r], that is the {e unrestricted} index
       of [dep_dirs]. *)
 
-  val dep_dirs : t -> Fpath.t list
+  val dep_dirs : t -> Filepath.t list
   (** [dep_dirs r] are the dependency directories. *)
 
   val deps : t -> deps
@@ -70,7 +70,7 @@ module Mod_resolver : sig
   (** [dep_dir_deps r] are all the dependency restrictions that
       can be found in [r]; regardless of {!deps}. *)
 
-  val dep_of_file : t -> Fpath.t -> dep option
+  val dep_of_file : t -> Filepath.t -> dep option
   (** [find_dep r f] is the dependency restriction for [file] in [r]. This
       is never [None] if [f] is in {!index}. *)
 
@@ -79,16 +79,16 @@ module Mod_resolver : sig
       {b Note.} File objects returned by [find_*] functions are made ready
       in [memo r]. *)
 
-  val cmi_obj : t -> Fpath.t -> Brzo_ocaml_cmi.t Fut.t
+  val cmi_obj : t -> Filepath.t -> Brzo_ocaml_cmi.t Fut.t
   (** [cmi_obj r file] asks for the cmi compilation object of file [file].
       FIXME let the fut be a fiber. *)
 
-  val find_cmi_side_cmx_file : t -> Brzo_ocaml_cmi.t -> Fpath.t option
+  val find_cmi_side_cmx_file : t -> Brzo_ocaml_cmi.t -> Filepath.t option
   (** [find_cmi_side_cmx_file r cmi] returns an existing side [cmx] file for
       [cmi] located along side it. FIXME be principled about that:
       makes as a side effect ready in [memo r]. *)
 
-  val find_cmi_files_for_modname : t -> B0_ocaml.Modname.t -> Fpath.t list
+  val find_cmi_files_for_modname : t -> B0_ocaml.Modname.t -> Filepath.t list
   (** [find_cmi_files_for_modname r mn] finds cmi files whose filename could
       resolve to module name [mn]. *)
 

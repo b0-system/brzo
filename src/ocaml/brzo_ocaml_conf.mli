@@ -22,6 +22,6 @@ val default_target :
   target Fut.t
 
 val target : t -> target option
-val ocamlpath : t -> Fpath.t list
-val libs : t -> Fpath.t list
+val ocamlpath : t -> Filepath.t list
+val libs : t -> Filepath.t list
 val lock_libs : t -> bool

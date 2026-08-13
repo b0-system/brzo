@@ -28,7 +28,7 @@ let run m ?switch:s cmd oargs =
 
 let lib_dir m ?switch () =
   let* r = run m ?switch "var" Cmd.(arg "lib") in
-  let lib_dir = Result.bind r Fpath.of_string in
+  let lib_dir = Result.bind r Filepath.of_string in
   let lib_dir = B0_memo.fail_if_error m lib_dir in
   Fut.return lib_dir
 
@@ -69,4 +69,4 @@ let pkg_list ?switch:s () =
   in
   Result.bind (Os.Cmd.run_out ~trim:true list) @@ fun s ->
   try Ok (String.fold_ascii_lines ~drop_newlines:true parse_pkg [] s) with
-  | Failure e -> Fpath.error Fpath.dash "%s" e
+  | Failure e -> Filepath.error Filepath.dash "%s" e

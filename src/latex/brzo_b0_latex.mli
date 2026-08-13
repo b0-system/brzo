@@ -20,7 +20,7 @@ end
 
 module Compile : sig
   val cmd :
-    B0_memo.t -> ?args:Cmd.t -> tex:Fpath.t -> dir:Fpath.t ->
+    B0_memo.t -> ?args:Cmd.t -> tex:Filepath.t -> dir:Filepath.t ->
     oname:string -> unit -> unit
     (** [cmd ~tex ~o] compiles [tex] to the PDF file [oname.pdf] in [dir]
         using {!Tool.xelatex}. *)
@@ -38,13 +38,13 @@ module Fls : sig
   type t
   (** The type for contents of [.fls] files. *)
 
-  val reads : t -> Fpath.Set.t
+  val reads : t -> Filepath.Set.t
   (** [reads f] are absolute paths to file reads. *)
 
-  val writes : t -> Fpath.Set.t
+  val writes : t -> Filepath.Set.t
   (** [writes f] are absolute paths to file writes. *)
 
-  val of_string : ?file:Fpath.t -> string -> (t, string) result
+  val of_string : ?file:Filepath.t -> string -> (t, string) result
   (** [of_string s] parses [.fls] data from [s] assuming it
       was read from file [file] (for error reporting, defaults to
       {!Os.File.dash}). *)
@@ -104,7 +104,7 @@ module Bibdoi : sig
   val dois : t -> Doi.t list
   (** [dois b] is the list of DOIs in [b]. *)
 
-  val of_string : ?file:Fpath.t -> string -> (t, string) result
+  val of_string : ?file:Filepath.t -> string -> (t, string) result
   (** [of_string s] parses a [.bibdoi] file from [s] assuming it
       was read from file [file] (for error reporting, defaults
       to {!Os.File.dash}. *)

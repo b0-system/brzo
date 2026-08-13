@@ -23,7 +23,7 @@ let add_mod_names i names =
 
 let read f =
   try
-    let i = Cmi_format.read_cmi (Fpath.to_string f) in
+    let i = Cmi_format.read_cmi (Filepath.to_string f) in
     let name = i.Cmi_format.cmi_name in
     let mod_names = add_mod_names i (String.Set.singleton name) in
     let digest, deps =

@@ -12,7 +12,7 @@ module Memo = struct
   open B0_std.Fut.Syntax
 
   let copy_file m ~src_root ~dst_root src =
-    let dst = Fpath.reroot ~src_root ~dst_root src in
+    let dst = Filepath.reroot ~src_root ~dst_root src in
     B0_memo.ready_file m src;
     B0_memo.copy m src ~dst
 
@@ -154,7 +154,7 @@ module Sexp = struct
     Sexpq.pp_error ~pp_loc ~pp_path ~pp_error_kind ~pp_prefix ()
 
   let of_string ?file s =
-    let file = Option.map Fpath.to_string file in
+    let file = Option.map Filepath.to_string file in
     Sexp.seq_of_string' ~pp_error:pp_read_error ?file s
 
   let of_file file =
@@ -165,7 +165,7 @@ module Sexp = struct
   let query q s =
     Sexpq.error_to_string ~pp_error:pp_query_error (Sexpq.query_at_path q s)
 
-  let fpath = Sexpq.atom_to ~kind:"file path" Fpath.of_string
+  let fpath = Sexpq.atom_to ~kind:"file path" Filepath.of_string
 end
 
 module Conf = struct
@@ -227,38 +227,38 @@ module Conf = struct
     | s -> false
     in
     let exclude fname file =
-      if auto_exclude fname then not (Fpath.Set.mem file srcs_i) else
-      Fpath.Set.mem file srcs_x
+      if auto_exclude fname then not (Filepath.Set.mem file srcs_i) else
+      Filepath.Set.mem file srcs_x
     in
     let add_file fname p (seen, by_ext as acc) =
-      let ext = Fpath.take_ext ~multi:false p in
+      let ext = Filepath.take_ext ~multi:false p in
       if not (String.Set.mem ext B0_file_exts.all) then acc else
       seen, (String.Map.add_to_list ext p by_ext)
     in
     let add st fname p (seen, by_ext as acc) =
       if exclude fname p then acc else
       match st.Unix.st_kind with
-      | Unix.S_DIR -> (Fpath.Set.add p seen, by_ext)
+      | Unix.S_DIR -> (Filepath.Set.add p seen, by_ext)
       | _ -> add_file fname p acc
     in
     let add_i (seen, by_ext as acc) i =
       match Os.File.exists i |> Result.error_to_failure with
-      | true -> add_file (Fpath.basename i) i acc
+      | true -> add_file (Filepath.basename i) i acc
       | false ->
-          if exclude (Fpath.basename i) i then acc else
-          let i = Fpath.drop_trailing_dir_sep i in
-          if Fpath.Set.mem i seen then acc else
-          let acc = Fpath.Set.add i seen, by_ext in
+          if exclude (Filepath.basename i) i then acc else
+          let i = Filepath.drop_trailing_dir_sep i in
+          if Filepath.Set.mem i seen then acc else
+          let acc = Filepath.Set.add i seen, by_ext in
           if not (Os.Dir.exists i |> Result.error_to_failure) then acc else
           let prune_dir _ dname dir (seen, _) =
-            exclude dname dir || Fpath.Set.mem dir seen
+            exclude dname dir || Filepath.Set.mem dir seen
           in
           let dotfiles = true and follow_symlinks = true and recurse = true in
           Os.Dir.fold ~prune_dir ~dotfiles ~follow_symlinks ~recurse
             add i acc |> Result.error_to_failure
     in
-    let srcs_i = Fpath.Set.elements srcs_i in
-    let acc = Fpath.Set.empty, String.Map.empty in
+    let srcs_i = Filepath.Set.elements srcs_i in
+    let acc = Filepath.Set.empty, String.Map.empty in
     try Ok (snd (List.fold_left add_i acc srcs_i)) with
     | Failure e -> Fmt.error "collecting source files: %s" e
 
@@ -267,24 +267,24 @@ module Conf = struct
   type t =
     { action_args : string list;
       background : bool;
-      b0_dir : Fpath.t;
-      brzo_file : Fpath.t option;
-      cache_dir : Fpath.t;
-      cwd : Fpath.t;
+      b0_dir : Filepath.t;
+      brzo_file : Filepath.t option;
+      cache_dir : Filepath.t;
+      cwd : Filepath.t;
       domain_name : string option;
       domain_confs : domain list;
       hash_fun : (module B0_hash.T);
       jobs : int;
-      log_file : Fpath.t;
+      log_file : Filepath.t;
       memo : (B0_memo.t, string) result Lazy.t;
       no_pager : bool;
       outcome_mode : outcome_mode;
       output_outcome_path : bool;
       pdf_viewer : Cmd.t option;
-      root : Fpath.t;
+      root : Filepath.t;
       srcs : (B0_file_exts.map, string) result Lazy.t;
-      srcs_i : Fpath.Set.t;
-      srcs_x : Fpath.Set.t;
+      srcs_i : Filepath.Set.t;
+      srcs_x : Filepath.Set.t;
       web_browser : Cmd.t option; }
 
   let make
@@ -293,7 +293,7 @@ module Conf = struct
       ~outcome_mode ~output_outcome_path ~pdf_viewer ~root ~srcs_i ~srcs_x
       ~web_browser ()
     =
-    let trash_dir = Fpath.(b0_dir / B0_memo_cli.trash_dirname) in
+    let trash_dir = Filepath.(b0_dir / B0_memo_cli.trash_dirname) in
     let srcs = lazy (collect_srcs ~srcs_i ~srcs_x) in
     let memo = lazy (Memo.create ~hash_fun ~cwd ~cache_dir ~trash_dir ~jobs) in
     { action_args; background; b0_dir; brzo_file; cache_dir; cwd; domain_name;
@@ -337,22 +337,22 @@ module Conf = struct
   let pp_hash_fun ppf (module H : B0_hash.T) = Fmt.string ppf H.id
   let pp =
     Fmt.record
-      [ Fmt.field "b0-dir" b0_dir Fpath.pp_quoted;
+      [ Fmt.field "b0-dir" b0_dir Filepath.pp_quoted;
         Fmt.field "background" background Fmt.bool;
-        Fmt.field "brzo-file" brzo_file (pp_auto Fpath.pp_quoted);
-        Fmt.field "cache-dir" cache_dir Fpath.pp_quoted;
-        Fmt.field "cwd" cwd Fpath.pp_quoted;
+        Fmt.field "brzo-file" brzo_file (pp_auto Filepath.pp_quoted);
+        Fmt.field "cache-dir" cache_dir Filepath.pp_quoted;
+        Fmt.field "cwd" cwd Filepath.pp_quoted;
         Fmt.field "domain" domain_name (pp_auto Fmt.string);
         Fmt.field "hash-fun" hash_fun pp_hash_fun;
         Fmt.field "jobs" jobs Fmt.int;
-        Fmt.field "log-file" log_file Fpath.pp_quoted;
+        Fmt.field "log-file" log_file Filepath.pp_quoted;
         Fmt.field "no-pager" no_pager Fmt.bool;
         Fmt.field "outcome-mode" outcome_mode pp_outcome_mode;
         Fmt.field "output-outcome-path" output_outcome_path Fmt.bool;
         Fmt.field "pdf-viewer" pdf_viewer (pp_auto Cmd.pp);
-        Fmt.field "root" root Fpath.pp_quoted;
-        Fmt.field "srcs-i" srcs_i (Fmt.vbox Fpath.(Set.pp pp_quoted));
-        Fmt.field "srcs-x" srcs_x (Fmt.vbox Fpath.(Set.pp pp_quoted));
+        Fmt.field "root" root Filepath.pp_quoted;
+        Fmt.field "srcs-i" srcs_i (Fmt.vbox Filepath.(Set.pp pp_quoted));
+        Fmt.field "srcs-x" srcs_x (Fmt.vbox Filepath.(Set.pp pp_quoted));
         Fmt.field "web-browser" web_browser (pp_auto Cmd.pp); ]
 
   let pp_with_header ppf c = Fmt.pf ppf "@[<v>%a@,%a@]" Fmt.code "Common" pp c
@@ -373,12 +373,12 @@ module Conf_setup = struct
       "@[<v>%a: @[<v>No %a file found in %a@,\
        or upwards. To %a from this directory use option %a or@,\
        invoke %a to mark the root.@]@]"
-      red "Error" bold Conf.brzo_file_name bold (Fpath.to_string cwd)
+      red "Error" bold Conf.brzo_file_name bold (Filepath.to_string cwd)
       bold "brzo" bold "--root ." bold (create Conf.brzo_file_name)
 
   let find_root_and_brzo_file ~auto_cwd_root ~cwd ~root ~brzo_file =
     let brzo_file_in ~dir =
-      let file = Fpath.(dir / Conf.brzo_file_name) in
+      let file = Filepath.(dir / Conf.brzo_file_name) in
       match Os.File.exists file with Ok true -> Some file | _ -> None
     in
     let root = match root with
@@ -389,7 +389,7 @@ module Conf_setup = struct
         let rec loop dir = match brzo_file_in ~dir with
         | Some _ as root_brzo_file -> Some (dir, root_brzo_file)
         | None ->
-            if not (Fpath.is_root dir) then loop (Fpath.parent dir) else
+            if not (Filepath.is_root dir) then loop (Filepath.parent dir) else
             if auto_cwd_root then Some (cwd, None) else None
         in
         Ok (loop cwd)
@@ -398,10 +398,10 @@ module Conf_setup = struct
     | None -> err_no_root ~cwd
     | Some (root, root_brzo_file) ->
         let brzo_file = match brzo_file with
-        | Some f -> Some Fpath.(cwd // f)
+        | Some f -> Some Filepath.(cwd // f)
         | None -> root_brzo_file
         in
-        Ok (Fpath.ensure_trailing_dir_sep root, brzo_file)
+        Ok (Filepath.ensure_trailing_dir_sep root, brzo_file)
 
   (* BRZO file *)
 
@@ -515,28 +515,28 @@ module Conf_setup = struct
   let srcs_x_q = Sexpq.(key srcs_x_key ~absent:[] (list Sexp.fpath))
   let get_srcs_ix ~root ~srcs_i:i_cli ~srcs_x:x_cli sexp =
     let set_of_list ps =
-      let add_path ~root acc f = match Fpath.is_current_dir f with
-      | true -> Fpath.Set.add root acc
-      | false -> Fpath.Set.add Fpath.(root // f) acc
+      let add_path ~root acc f = match Filepath.is_current_dir f with
+      | true -> Filepath.Set.add root acc
+      | false -> Filepath.Set.add Filepath.(root // f) acc
       in
-      List.fold_left (add_path ~root) Fpath.Set.empty ps
+      List.fold_left (add_path ~root) Filepath.Set.empty ps
     in
     Result.bind (Sexp.query srcs_i_q sexp) @@ fun i_conf ->
     Result.bind (Sexp.query srcs_x_q sexp) @@ fun x_conf ->
     let i_cli = set_of_list i_cli and i_conf = set_of_list i_conf in
     let x_cli = set_of_list x_cli and x_conf = set_of_list x_conf in
-    let srcs_i = match Fpath.Set.(is_empty i_conf && is_empty i_cli) with
-    | true -> Fpath.Set.singleton root
-    | false -> Fpath.Set.(union (diff i_conf x_cli) i_cli)
+    let srcs_i = match Filepath.Set.(is_empty i_conf && is_empty i_cli) with
+    | true -> Filepath.Set.singleton root
+    | false -> Filepath.Set.(union (diff i_conf x_cli) i_cli)
     in
-    let srcs_x = Fpath.Set.(union (diff x_conf i_cli) x_cli) in
+    let srcs_x = Filepath.Set.(union (diff x_conf i_cli) x_cli) in
     Ok (srcs_i, srcs_x)
 
   let common_keys = [domain_key; outcome_mode_key; srcs_i_key; srcs_x_key]
 
   let get_log_file ~cwd ~b0_dir ~log_file = match log_file with
-  | None -> Fpath.(b0_dir / Conf.brzo_dir_name / B0_memo_cli.Log.filename)
-  | Some p -> Fpath.(cwd // p)
+  | None -> Filepath.(b0_dir / Conf.brzo_dir_name / B0_memo_cli.Log.filename)
+  | Some p -> Filepath.(cwd // p)
 
   let with_cli
       ~auto_cwd_root ~use_brzo_file ~action_args ~background ~b0_dir
@@ -602,11 +602,11 @@ module Cli = struct
                a BRZO file present at the brzo root. Note that this option \
                does not affect root finding (see $(b,--root)), it only \
                replaces the BRZO file to use."
-        Fpath.pp_quoted Fpath.null
+        Filepath.pp_quoted Filepath.null
     in
     let env = Cmd.Env.info "BRZO_FILE" in
     let absent = "$(b,BRZO) file at the brzo root" in
-    Arg.(value & opt (some B0_std_cli.filepath) None &
+    Arg.(value & opt (some B0_std_cli.file) None &
          info ["brzo-file"] ~absent ~env ~doc ~docs)
 
   let cwd =
@@ -615,7 +615,7 @@ module Cli = struct
        Relative file path on the command line are interpreted relative to this \
        new cwd."
     in
-    Arg.(value & opt (some B0_std_cli.dirpath) None & info ["C"] ~doc ~docs)
+    Arg.(value & opt (some B0_std_cli.dir) None & info ["C"] ~doc ~docs)
 
   let outcome_mode =
     let docs = s_outcome_mode in
@@ -649,7 +649,7 @@ module Cli = struct
     in
     let env = Cmd.Env.info "BRZO_ROOT" in
     let none = "automatically determined" in
-    Arg.(value & opt (some ~none B0_std_cli.dirpath) None &
+    Arg.(value & opt (some ~none B0_std_cli.dir) None &
          info ["root"] ~env ~doc ~docs)
 
   let log_file =

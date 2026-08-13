@@ -12,7 +12,7 @@ open Brzo_b0_ocaml
    N.B. what these functions do is described in english in manual.mld
    It may help to understand these lines. *)
 
-type ambs = [`Ambs of (B0_ocaml.Modname.t * Fpath.t list) list ]
+type ambs = [`Ambs of (B0_ocaml.Modname.t * Filepath.t list) list ]
 
 let resolve_cmis_modrefs r cmis modrefs =
   let rec loop r cmis seen to_find =
@@ -96,7 +96,7 @@ let resolve_impl_deps r ~code ~local_mods ~in_dir deps =
     let rec loop b deps modrefs = function
     | [] -> Fut.return (deps, modrefs)
     | obj :: reads ->
-        if not (Fpath.has_ext ".cmi" obj) then loop b deps modrefs reads else
+        if not (Filepath.has_ext ".cmi" obj) then loop b deps modrefs reads else
         let* cmi_obj = Mod_resolver.cmi_obj r obj in
         let deps = String.Set.diff deps (Brzo_ocaml_cmi.modnames cmi_obj) in
         let modrefs =
@@ -134,7 +134,7 @@ let handle_amb_deps r file ~unresolved (`Ambs ambs) = match ambs with
     in
     let pp_alt ppf cmi =
       let dep = Option.get (Mod_resolver.dep_of_file r cmi) in
-      let dep = Fpath.to_string dep in
+      let dep = Filepath.to_string dep in
       Fmt.code ppf
         (String.concat " " ["brzo"; "file"; "set"; "ocaml.deps.v[0]"; dep])
     in
@@ -145,15 +145,15 @@ let handle_amb_deps r file ~unresolved (`Ambs ambs) = match ambs with
         B0_ocaml.Modname.pp dep Fmt.(list pp_alt) cmis
     in
     B0_memo.fail (Mod_resolver.memo r)
-      "@[<v>File %a:@,%a%a@]" Fpath.pp_unquoted file
+      "@[<v>File %a:@,%a%a@]" Filepath.pp_unquoted file
       pp_unresolved unresolved
       Fmt.(list pp_amb) ambs
 
 (* Handling missing user specified dependencies. *)
 
 let root_dep dep =
-  match String.split_first ~sep:Fpath.natural_dir_sep (Fpath.to_string dep) with
-  | None -> dep | Some (root, _) -> Fpath.v root
+  match String.split_first ~sep:Filepath.natural_dir_sep (Filepath.to_string dep) with
+  | None -> dep | Some (root, _) -> Filepath.v root
 
 let pp_miss_deps_help ppf (suggest, opam) =
   let pp_dep ppf s = Fmt.code ppf s in
@@ -181,8 +181,8 @@ let pp_miss_deps_help ppf (suggest, opam) =
 
 let get_miss_deps_help r opam_pkgs miss_deps =
   let miss_help r opam_pkgs resolver_deps all_deps dep =
-    let root = Fpath.to_string (root_dep dep) in
-    let dep = Fpath.to_string dep in
+    let root = Filepath.to_string (root_dep dep) in
+    let dep = Filepath.to_string dep in
     let root_in_resolver = List.mem root resolver_deps in
     let root_in_opam = List.mem root opam_pkgs in
     match root_in_opam && not root_in_resolver with
@@ -198,7 +198,7 @@ let get_miss_deps_help r opam_pkgs miss_deps =
         | suggest -> `Suggest (dep, suggest)
   in
   let resolver_deps = Mod_resolver.dep_dirs_deps r in
-  let resolver_deps = List.rev_map Fpath.to_string resolver_deps in
+  let resolver_deps = List.rev_map Filepath.to_string resolver_deps in
   let all_deps = String.distinct (List.rev_append opam_pkgs resolver_deps) in
   let rec loop correct opam = function
   | [] -> correct, opam

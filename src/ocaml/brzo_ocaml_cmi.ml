@@ -7,7 +7,7 @@ open B0_std
 open Fut.Syntax
 
 type t =
-  { file : Fpath.t;
+  { file : Filepath.t;
     modref : B0_ocaml.Modref.t;
     modnames : B0_ocaml.Modname.Set.t;
     deps : B0_ocaml.Modref.Set.t }
@@ -29,4 +29,4 @@ let modref cmi = cmi.modref
 let modnames cmi = cmi.modnames
 let deps cmi = cmi.deps
 let pp ppf cmi =
-  Fmt.pf ppf "%a %a" B0_ocaml.Modref.pp cmi.modref Fpath.pp_quoted cmi.file
+  Fmt.pf ppf "%a %a" B0_ocaml.Modref.pp cmi.modref Filepath.pp_quoted cmi.file

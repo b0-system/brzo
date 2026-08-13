@@ -18,22 +18,22 @@ type 'a build_dir_suff =
     parallel in the build dir. *)
 
 type 'a artefact =
-  B0_memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t -> Fpath.t Fut.t
+  B0_memo.t -> Brzo.Conf.t -> 'a -> build_dir:Filepath.t -> Filepath.t Fut.t
 (** The type for outcome artefact path determination. [artefact m c dc
     ~build_dir] is the absolute path, contained in the domain specific
     [build_dir] to the outcome artefact (can be a directory). *)
 
 type 'a build =
-  B0_memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t ->
-  artefact:Fpath.t -> srcs:B0_file_exts.map -> unit Fut.t
+  B0_memo.t -> Brzo.Conf.t -> 'a -> build_dir:Filepath.t ->
+  artefact:Filepath.t -> srcs:B0_file_exts.map -> unit Fut.t
 (** The type for outcome artefact constructions. [build m c dc
     ~build_dir ~artefact ~srcs] builds [artefact] from [srcs] using
     [m]. [build_dir] is clean. [artefact] is the result of the {!artefact}
     function. *)
 
 type 'a action =
-  B0_memo.t -> Brzo.Conf.t -> 'a -> build_dir:Fpath.t -> artefact:Fpath.t ->
-  (unit -> (Os.Exit.t, string) result) Fut.t
+  B0_memo.t -> Brzo.Conf.t -> 'a -> build_dir:Filepath.t ->
+  artefact:Filepath.t -> (unit -> (Os.Exit.t, string) result) Fut.t
 (** The type for outcome action. [action m c dc ~artefact] returns the
     action on [artefact] (already tested for existence and constructed
     by the outcome's {!artefact} function). When the function is
