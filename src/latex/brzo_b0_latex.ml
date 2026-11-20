@@ -66,7 +66,8 @@ module Fls = struct
     try
       (* TODO if there's no muliline parse use fold directly *)
       let add_line _ acc l = l :: acc in
-      let rlines = String.fold_ascii_lines ~drop_newlines:true add_line [] s in
+      let els = String.endlines Lf_crlf and drop_endlines = true in
+      let rlines = String.fold_lines els ~drop_endlines add_line [] s in
       loop 1
         (Filepath.v "/") Filepath.Set.empty Filepath.Set.empty (List.rev rlines)
     with

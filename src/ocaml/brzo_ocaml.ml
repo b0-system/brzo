@@ -129,7 +129,9 @@ let compile_c_srcs b ~comp ~opts ~in_dir =
       | exception Not_found ->
           let o = Filepath.(in_dir / Fmt.str "%s%s" cname obj_ext) in
           B0_memo.ready_file b.m c;
-          ignore @@ B0_ocaml.Compile.c_to_o b.m ~comp ~opts ~reads:hs ~c ~o;
+          let c_opts = Cmd.empty in
+          ignore @@
+          B0_ocaml.Compile.c_to_o b.m ~comp ~opts ~c_opts ~reads:hs ~c ~o;
           loop (o :: os) (String.Map.add cname c cunits) hs cs
       | f ->
           B0_memo.notify b.m `Warn
